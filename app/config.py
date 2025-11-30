@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     # SerpBear integration
     serpbear_url: str = "http://localhost:3000"
     serpbear_api_key: str = ""
+    serpbear_user: str = "admin"
+    serpbear_password: str = ""
+    serpbear_secret: str = ""
+    serpbear_public_url: str = ""
+
+    # Database password (for docker-compose)
+    db_password: str = ""
 
     # Scraping API (for SERP data)
     scraping_api_key: str = ""
@@ -59,6 +66,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"  # Allow extra env vars not defined in Settings
 
 
 @lru_cache()
