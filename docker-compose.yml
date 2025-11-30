@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: aiqso-seo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: seo_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-seo_secure_pass}
+      POSTGRES_DB: aiqso_seo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seo_user -d aiqso_seo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: aiqso-seo-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # SEO Service API
+  api:
+    build: .
+    container_name: aiqso-seo-api
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=postgresql://seo_user:${DB_PASSWORD:-seo_secure_pass}@postgres:5432/aiqso_seo
+      - REDIS_URL=redis://redis:6379/0
+      - SERPBEAR_URL=${SERPBEAR_URL:-http://serpbear:3000}
+      - SERPBEAR_API_KEY=${SERPBEAR_API_KEY}
+      - SCRAPING_API_KEY=${SCRAPING_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SECRET_KEY=${SECRET_KEY:-change-in-production}
+      - DEBUG=${DEBUG:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker for background tasks
+  celery-worker:
+    build: .
+    container_name: aiqso-seo-worker
+    restart: unless-stopped
+    command: celery -A app.celery_app worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://seo_user:${DB_PASSWORD:-seo_secure_pass}@postgres:5432/aiqso_seo
+      - REDIS_URL=redis://redis:6379/0
+      - SERPBEAR_URL=${SERPBEAR_URL:-http://serpbear:3000}
+      - SERPBEAR_API_KEY=${SERPBEAR_API_KEY}
+      - SCRAPING_API_KEY=${SCRAPING_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    depends_on:
+      - redis
+      - postgres
+
+  # SerpBear for rank tracking
+  serpbear:
+    image: towfiqi/serpbear
+    container_name: aiqso-serpbear
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - USER=${SERPBEAR_USER:-admin}
+      - PASSWORD=${SERPBEAR_PASSWORD:-admin123}
+      - SECRET=${SERPBEAR_SECRET:-change-this-secret-key}
+      - APIKEY=${SERPBEAR_API_KEY:-serpbear-api-key}
+      - NEXT_PUBLIC_APP_URL=${SERPBEAR_PUBLIC_URL:-http://localhost:3001}
+    volumes:
+      - serpbear_data:/app/data
+
+volumes:
+  postgres_data:
+  redis_data:
+  serpbear_data:
+
+networks:
+  default:
+    name: aiqso-seo-network
