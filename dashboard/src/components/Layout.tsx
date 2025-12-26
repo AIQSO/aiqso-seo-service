@@ -39,20 +39,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Navigation */}
         <nav className="flex-1 px-4 py-4 space-y-1">
           {navigation.map((item) => {
-            const isActive = pathname === item.href ||
-              (item.href !== '/' && pathname.startsWith(item.href));
+            const isActive =
+              pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
 
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-100'
+                  isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <item.icon className={`w-5 h-5 mr-3 ${isActive ? 'text-blue-700' : 'text-gray-400'}`} />
+                <item.icon
+                  className={`w-5 h-5 mr-3 ${isActive ? 'text-blue-700' : 'text-gray-400'}`}
+                />
                 {item.name}
               </Link>
             );
@@ -70,9 +70,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <div className="pl-64">
-        <main className="p-8">
-          {children}
-        </main>
+        <main className="p-8">{children}</main>
       </div>
     </div>
   );

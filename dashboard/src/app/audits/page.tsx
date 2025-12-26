@@ -38,9 +38,7 @@ export default function AuditsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Audits</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            View audit history and run new SEO audits
-          </p>
+          <p className="mt-1 text-sm text-gray-500">View audit history and run new SEO audits</p>
         </div>
         <button
           onClick={() => setShowNewAudit(true)}
@@ -117,10 +115,15 @@ export default function AuditsPage() {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`text-sm font-semibold ${
-                    audit.score >= 80 ? 'text-green-600' :
-                    audit.score >= 60 ? 'text-yellow-600' : 'text-red-600'
-                  }`}>
+                  <span
+                    className={`text-sm font-semibold ${
+                      audit.score >= 80
+                        ? 'text-green-600'
+                        : audit.score >= 60
+                          ? 'text-yellow-600'
+                          : 'text-red-600'
+                    }`}
+                  >
                     {audit.score}/100
                   </span>
                 </td>
@@ -141,11 +144,15 @@ export default function AuditsPage() {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    audit.status === 'completed' ? 'bg-green-100 text-green-800' :
-                    audit.status === 'running' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      audit.status === 'completed'
+                        ? 'bg-green-100 text-green-800'
+                        : audit.status === 'running'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
                     {audit.status}
                   </span>
                 </td>

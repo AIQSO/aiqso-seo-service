@@ -10,7 +10,13 @@ interface StatsCardProps {
   changeType?: 'positive' | 'negative' | 'neutral';
 }
 
-export default function StatsCard({ title, value, icon: Icon, change, changeType = 'neutral' }: StatsCardProps) {
+export default function StatsCard({
+  title,
+  value,
+  icon: Icon,
+  change,
+  changeType = 'neutral',
+}: StatsCardProps) {
   const changeColors = {
     positive: 'text-green-600 bg-green-50',
     negative: 'text-red-600 bg-red-50',
@@ -24,7 +30,9 @@ export default function StatsCard({ title, value, icon: Icon, change, changeType
           <Icon className="w-5 h-5 text-blue-600" />
         </div>
         {change && (
-          <span className={`text-xs font-medium px-2 py-1 rounded-full ${changeColors[changeType]}`}>
+          <span
+            className={`text-xs font-medium px-2 py-1 rounded-full ${changeColors[changeType]}`}
+          >
             {change}
           </span>
         )}

@@ -9,12 +9,7 @@ const plans = [
     name: 'Starter',
     price: 49,
     tier: 'starter',
-    features: [
-      '5 websites',
-      '100 audits/month',
-      'Basic reports',
-      'Email support',
-    ],
+    features: ['5 websites', '100 audits/month', 'Basic reports', 'Email support'],
   },
   {
     name: 'Pro',
@@ -85,9 +80,7 @@ export default function BillingPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Manage your subscription and payment methods
-        </p>
+        <p className="mt-1 text-sm text-gray-500">Manage your subscription and payment methods</p>
       </div>
 
       {/* Current Plan */}
@@ -97,7 +90,8 @@ export default function BillingPage() {
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Current Plan</h2>
               <p className="text-sm text-gray-500">
-                {subscription.tier_name.charAt(0).toUpperCase() + subscription.tier_name.slice(1)} Plan
+                {subscription.tier_name.charAt(0).toUpperCase() + subscription.tier_name.slice(1)}{' '}
+                Plan
               </p>
             </div>
             <div className="text-right">
@@ -111,9 +105,13 @@ export default function BillingPage() {
             </div>
           </div>
           <div className="mt-4 flex items-center space-x-4">
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-              subscription.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-            }`}>
+            <span
+              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                subscription.status === 'active'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-yellow-100 text-yellow-800'
+              }`}
+            >
               {subscription.status}
             </span>
             <button className="text-sm text-blue-600 hover:text-blue-700">
@@ -166,8 +164,8 @@ export default function BillingPage() {
                   subscription?.tier_name === plan.tier
                     ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                     : plan.popular
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                    : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                 }`}
                 disabled={subscription?.tier_name === plan.tier}
               >
@@ -208,9 +206,11 @@ export default function BillingPage() {
                 <p className="text-sm font-medium text-gray-900">
                   ${(payment.amount_cents / 100).toFixed(2)}
                 </p>
-                <span className={`text-xs ${
-                  payment.status === 'succeeded' ? 'text-green-600' : 'text-yellow-600'
-                }`}>
+                <span
+                  className={`text-xs ${
+                    payment.status === 'succeeded' ? 'text-green-600' : 'text-yellow-600'
+                  }`}
+                >
                   {payment.status}
                 </span>
               </div>
@@ -222,9 +222,7 @@ export default function BillingPage() {
           <div className="px-6 py-12 text-center">
             <CreditCard className="w-12 h-12 text-gray-300 mx-auto" />
             <h3 className="mt-4 text-lg font-medium text-gray-900">No payments yet</h3>
-            <p className="mt-2 text-sm text-gray-500">
-              Your payment history will appear here
-            </p>
+            <p className="mt-2 text-sm text-gray-500">Your payment history will appear here</p>
           </div>
         )}
       </div>

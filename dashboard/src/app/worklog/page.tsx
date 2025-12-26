@@ -62,7 +62,8 @@ export default function WorklogPage() {
           <div className="mt-4">
             <p className="text-sm text-gray-500">This Month</p>
             <p className="text-2xl font-semibold text-gray-900">
-              {Math.floor((summary?.this_month_minutes || 0) / 60)}h {(summary?.this_month_minutes || 0) % 60}m
+              {Math.floor((summary?.this_month_minutes || 0) / 60)}h{' '}
+              {(summary?.this_month_minutes || 0) % 60}m
             </p>
           </div>
         </div>
@@ -104,9 +105,11 @@ export default function WorklogPage() {
                 <div className="flex-1">
                   <div className="flex items-center space-x-3">
                     <h3 className="text-sm font-medium text-gray-900">{entry.title}</h3>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                      categoryColors[entry.category] || 'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                        categoryColors[entry.category] || 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
                       {entry.category}
                     </span>
                   </div>

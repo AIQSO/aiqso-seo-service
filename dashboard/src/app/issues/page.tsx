@@ -19,7 +19,9 @@ const statusColors = {
 
 export default function IssuesPage() {
   const [filter, setFilter] = useState<'all' | 'open' | 'in_progress' | 'resolved'>('all');
-  const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'info'>('all');
+  const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'info'>(
+    'all'
+  );
 
   const { data: issues, isLoading } = useQuery({
     queryKey: ['issues'],
@@ -114,34 +116,49 @@ export default function IssuesPage() {
           <div
             key={issue.id}
             className={`bg-white rounded-xl border ${
-              issue.severity === 'critical' ? 'border-red-200' :
-              issue.severity === 'warning' ? 'border-yellow-200' : 'border-gray-200'
+              issue.severity === 'critical'
+                ? 'border-red-200'
+                : issue.severity === 'warning'
+                  ? 'border-yellow-200'
+                  : 'border-gray-200'
             } p-6`}
           >
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-4">
-                <div className={`p-2 rounded-lg ${
-                  issue.severity === 'critical' ? 'bg-red-100' :
-                  issue.severity === 'warning' ? 'bg-yellow-100' : 'bg-blue-100'
-                }`}>
-                  <AlertCircle className={`w-5 h-5 ${
-                    issue.severity === 'critical' ? 'text-red-600' :
-                    issue.severity === 'warning' ? 'text-yellow-600' : 'text-blue-600'
-                  }`} />
+                <div
+                  className={`p-2 rounded-lg ${
+                    issue.severity === 'critical'
+                      ? 'bg-red-100'
+                      : issue.severity === 'warning'
+                        ? 'bg-yellow-100'
+                        : 'bg-blue-100'
+                  }`}
+                >
+                  <AlertCircle
+                    className={`w-5 h-5 ${
+                      issue.severity === 'critical'
+                        ? 'text-red-600'
+                        : issue.severity === 'warning'
+                          ? 'text-yellow-600'
+                          : 'text-blue-600'
+                    }`}
+                  />
                 </div>
                 <div>
                   <h3 className="text-lg font-medium text-gray-900">{issue.title}</h3>
                   <p className="mt-1 text-sm text-gray-500">{issue.description}</p>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${severityColors[issue.severity as keyof typeof severityColors]}`}>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${severityColors[issue.severity as keyof typeof severityColors]}`}
+                    >
                       {issue.severity}
                     </span>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[issue.status as keyof typeof statusColors]}`}>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[issue.status as keyof typeof statusColors]}`}
+                    >
                       {issue.status.replace('_', ' ')}
                     </span>
-                    <span className="text-xs text-gray-500">
-                      {issue.domain}
-                    </span>
+                    <span className="text-xs text-gray-500">{issue.domain}</span>
                   </div>
                 </div>
               </div>

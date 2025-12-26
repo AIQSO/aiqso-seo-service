@@ -26,19 +26,20 @@ export default function ScoreCard({ title, score, change, subtitle }: ScoreCardP
         <h3 className="text-sm font-medium text-gray-500">{title}</h3>
         {change !== undefined && change !== null && (
           <span className={`text-xs font-medium px-2 py-1 rounded-full ${getChangeColor(change)}`}>
-            {change > 0 ? '+' : ''}{change}
+            {change > 0 ? '+' : ''}
+            {change}
           </span>
         )}
       </div>
       <div className="mt-2 flex items-baseline">
-        <span className={`text-3xl font-bold ${score !== null ? getScoreColor(score) : 'text-gray-400'}`}>
+        <span
+          className={`text-3xl font-bold ${score !== null ? getScoreColor(score) : 'text-gray-400'}`}
+        >
           {score !== null ? score : 'N/A'}
         </span>
         {score !== null && <span className="ml-1 text-lg text-gray-400">/100</span>}
       </div>
-      {subtitle && (
-        <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
-      )}
+      {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
     </div>
   );
 }

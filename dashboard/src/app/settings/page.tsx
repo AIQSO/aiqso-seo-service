@@ -39,9 +39,11 @@ export default function SettingsPage() {
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <tab.icon className={`w-5 h-5 mr-3 ${
-                  activeTab === tab.id ? 'text-blue-700' : 'text-gray-400'
-                }`} />
+                <tab.icon
+                  className={`w-5 h-5 mr-3 ${
+                    activeTab === tab.id ? 'text-blue-700' : 'text-gray-400'
+                  }`}
+                />
                 {tab.name}
               </button>
             ))}
@@ -117,12 +119,31 @@ function NotificationSettings() {
       <h2 className="text-lg font-semibold text-gray-900 mb-6">Notification Preferences</h2>
       <div className="space-y-4">
         {[
-          { id: 'audit_complete', label: 'Audit Completed', description: 'Get notified when an audit finishes' },
-          { id: 'score_drop', label: 'Score Drop Alert', description: 'Alert when SEO score drops significantly' },
-          { id: 'weekly_report', label: 'Weekly Report', description: 'Receive weekly SEO summary emails' },
-          { id: 'issue_critical', label: 'Critical Issues', description: 'Immediate alerts for critical SEO issues' },
+          {
+            id: 'audit_complete',
+            label: 'Audit Completed',
+            description: 'Get notified when an audit finishes',
+          },
+          {
+            id: 'score_drop',
+            label: 'Score Drop Alert',
+            description: 'Alert when SEO score drops significantly',
+          },
+          {
+            id: 'weekly_report',
+            label: 'Weekly Report',
+            description: 'Receive weekly SEO summary emails',
+          },
+          {
+            id: 'issue_critical',
+            label: 'Critical Issues',
+            description: 'Immediate alerts for critical SEO issues',
+          },
         ].map((item) => (
-          <div key={item.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+          <div
+            key={item.id}
+            className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
+          >
             <div>
               <p className="text-sm font-medium text-gray-900">{item.label}</p>
               <p className="text-sm text-gray-500">{item.description}</p>
@@ -183,7 +204,10 @@ function IntegrationSettings() {
       <h2 className="text-lg font-semibold text-gray-900 mb-6">Integrations</h2>
       <div className="space-y-4">
         {integrations.map((integration) => (
-          <div key={integration.name} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div
+            key={integration.name}
+            className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+          >
             <div>
               <p className="text-sm font-medium text-gray-900">{integration.name}</p>
               <p className="text-sm text-gray-500">{integration.description}</p>
