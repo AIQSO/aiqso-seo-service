@@ -1,16 +1,18 @@
 import enum
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, JSON
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.models.base import Base, TimestampMixin
 
 
 class ClientTier(enum.Enum):
     """Service tier levels."""
-    STARTER = "starter"           # $500/mo - 50 keywords, 1 site, weekly audits
-    PROFESSIONAL = "professional" # $1,500/mo - 200 keywords, 3 sites, daily audits
-    ENTERPRISE = "enterprise"     # $3,500/mo - 500 keywords, 10 sites, real-time
-    AGENCY = "agency"             # $5,000/mo - 1000+ keywords, unlimited sites
+
+    STARTER = "starter"  # $500/mo - 50 keywords, 1 site, weekly audits
+    PROFESSIONAL = "professional"  # $1,500/mo - 200 keywords, 3 sites, daily audits
+    ENTERPRISE = "enterprise"  # $3,500/mo - 500 keywords, 10 sites, real-time
+    AGENCY = "agency"  # $5,000/mo - 1000+ keywords, unlimited sites
 
 
 # Tier limits configuration

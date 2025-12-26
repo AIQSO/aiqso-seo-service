@@ -5,14 +5,12 @@ Admin endpoints for syncing data with Odoo ERP.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import Optional
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.client import Client
 from app.services.odoo_service import OdooService
-from app.routers.billing import get_current_client
 
 router = APIRouter(prefix="/odoo", tags=["Odoo Integration"])
 
@@ -20,7 +18,7 @@ router = APIRouter(prefix="/odoo", tags=["Odoo Integration"])
 class SyncResponse(BaseModel):
     success: bool
     message: str
-    details: Optional[dict] = None
+    details: dict | None = None
 
 
 @router.get("/status")
@@ -115,9 +113,12 @@ def create_subscription_invoice(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    subscription = db.query(Subscription).filter(
-        Subscription.client_id == client_id
-    ).order_by(Subscription.created_at.desc()).first()
+    subscription = (
+        db.query(Subscription)
+        .filter(Subscription.client_id == client_id)
+        .order_by(Subscription.created_at.desc())
+        .first()
+    )
 
     if not subscription:
         raise HTTPException(status_code=404, detail="No subscription found")
@@ -148,10 +149,14 @@ def create_work_invoice(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    work_logs = db.query(WorkLog).filter(
-        WorkLog.id.in_(work_log_ids),
-        WorkLog.client_id == client_id,
-    ).all()
+    work_logs = (
+        db.query(WorkLog)
+        .filter(
+            WorkLog.id.in_(work_log_ids),
+            WorkLog.client_id == client_id,
+        )
+        .all()
+    )
 
     if not work_logs:
         raise HTTPException(status_code=404, detail="No work logs found")

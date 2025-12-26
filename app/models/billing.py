@@ -5,14 +5,16 @@ Handles subscriptions, invoices, and payment tracking.
 """
 
 import enum
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, ForeignKey, Numeric, Text
+
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import Base, TimestampMixin
 
 
 class SubscriptionStatus(enum.Enum):
     """Subscription status."""
+
     TRIALING = "trialing"
     ACTIVE = "active"
     PAST_DUE = "past_due"
@@ -23,6 +25,7 @@ class SubscriptionStatus(enum.Enum):
 
 class PaymentStatus(enum.Enum):
     """Payment status."""
+
     PENDING = "pending"
     SUCCEEDED = "succeeded"
     FAILED = "failed"

@@ -13,10 +13,10 @@ Usage:
 import asyncio
 import json
 import sys
-from typing import Optional
+
 import click
 
-from ..core.auditor import SEOAuditor, AuditResult
+from ..core.auditor import AuditResult, SEOAuditor
 from ..core.tiers import get_tier_manager
 
 
@@ -68,7 +68,9 @@ def print_audit_result(result: AuditResult, verbose: bool = False):
 
     # Summary
     click.echo(f"Issues Found: {click.style(str(result.issues_found), fg='red' if result.issues_found else 'green')}")
-    click.echo(f"Warnings:     {click.style(str(result.warnings_found), fg='yellow' if result.warnings_found else 'green')}")
+    click.echo(
+        f"Warnings:     {click.style(str(result.warnings_found), fg='yellow' if result.warnings_found else 'green')}"
+    )
     click.echo(f"Duration:     {result.duration_seconds:.2f}s")
     click.echo()
 
@@ -126,7 +128,7 @@ def cli():
 @click.option("--ai", is_flag=True, help="Include AI-powered insights")
 @click.option("--lighthouse", is_flag=True, help="Include Lighthouse metrics")
 @click.option("--save", "-s", type=click.Path(), help="Save results to file")
-def audit(url: str, output: str, verbose: bool, ai: bool, lighthouse: bool, save: Optional[str]):
+def audit(url: str, output: str, verbose: bool, ai: bool, lighthouse: bool, save: str | None):
     """Audit a single URL for SEO issues.
 
     Example:
@@ -206,7 +208,7 @@ def compare(url1: str, url2: str, output: str):
                 "meta_diff": result1.meta_score - result2.meta_score,
                 "content_diff": result1.content_score - result2.content_score,
                 "performance_diff": result1.performance_score - result2.performance_score,
-            }
+            },
         }
         click.echo(json.dumps(comparison, indent=2))
     else:
@@ -250,7 +252,7 @@ def compare(url1: str, url2: str, output: str):
 @click.option("--depth", "-d", default=3, help="Maximum crawl depth")
 @click.option("--output", "-o", type=click.Choice(["text", "json"]), default="text", help="Output format")
 @click.option("--save", "-s", type=click.Path(), help="Save results to file")
-def site(url: str, max_pages: int, depth: int, output: str, save: Optional[str]):
+def site(url: str, max_pages: int, depth: int, output: str, save: str | None):
     """Audit an entire website (crawl and audit multiple pages).
 
     Example:
@@ -272,7 +274,7 @@ def tiers():
     click.echo("=" * 60)
     click.echo()
 
-    for name, tier in sorted(all_tiers.items(), key=lambda x: x[1].price_monthly or 0):
+    for _name, tier in sorted(all_tiers.items(), key=lambda x: x[1].price_monthly or 0):
         price_str = f"${tier.price_monthly}/mo" if tier.price_monthly else "Free"
         click.echo(click.style(f"{tier.display_name} ({price_str})", bold=True))
         click.echo(f"  {tier.description}")

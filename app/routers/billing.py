@@ -4,17 +4,18 @@ Billing API Router
 Endpoints for subscription management and payments.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Header
-from sqlalchemy.orm import Session
-from typing import Optional
-from pydantic import BaseModel
-import stripe
+from datetime import datetime
 
-from app.database import get_db
+import stripe
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from app.config import get_settings
+from app.database import get_db
+from app.models.billing import Payment, Subscription
 from app.models.client import Client
-from app.models.billing import Subscription, Payment, SubscriptionStatus
-from app.services.stripe_service import StripeService, STRIPE_PRICES
+from app.services.stripe_service import STRIPE_PRICES, StripeService
 
 settings = get_settings()
 router = APIRouter(prefix="/billing", tags=["Billing"])
@@ -24,8 +25,8 @@ router = APIRouter(prefix="/billing", tags=["Billing"])
 class CheckoutRequest(BaseModel):
     tier: str  # starter, pro, enterprise, agency
     interval: str = "monthly"  # monthly, yearly
-    success_url: Optional[str] = None
-    cancel_url: Optional[str] = None
+    success_url: str | None = None
+    cancel_url: str | None = None
 
 
 class CheckoutResponse(BaseModel):
@@ -39,7 +40,7 @@ class SubscriptionResponse(BaseModel):
     status: str
     amount: float
     interval: str
-    current_period_end: Optional[str]
+    current_period_end: str | None
     is_active: bool
 
 
@@ -52,10 +53,7 @@ class UsageResponse(BaseModel):
 
 
 # Helper to get current client (simplified - you'd have proper auth)
-def get_current_client(
-    api_key: str = Header(None, alias="X-API-Key"),
-    db: Session = Depends(get_db)
-) -> Client:
+def get_current_client(api_key: str = Header(None, alias="X-API-Key"), db: Session = Depends(get_db)) -> Client:
     """Get client from API key."""
     if not api_key:
         raise HTTPException(status_code=401, detail="API key required")
@@ -72,13 +70,15 @@ def list_plans():
     """List available subscription plans."""
     plans = []
     for tier, config in STRIPE_PRICES.items():
-        plans.append({
-            "tier": tier,
-            "name": tier.replace("_", " ").title(),
-            "price_monthly": config["amount"] / 100,
-            "price_yearly": (config["amount"] * 10) / 100,  # 2 months free
-            "features": get_tier_features(tier),
-        })
+        plans.append(
+            {
+                "tier": tier,
+                "name": tier.replace("_", " ").title(),
+                "price_monthly": config["amount"] / 100,
+                "price_yearly": (config["amount"] * 10) / 100,  # 2 months free
+                "features": get_tier_features(tier),
+            }
+        )
     return {"plans": plans}
 
 
@@ -140,15 +140,18 @@ def create_checkout_session(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/subscription", response_model=Optional[SubscriptionResponse])
+@router.get("/subscription", response_model=SubscriptionResponse | None)
 def get_subscription(
     client: Client = Depends(get_current_client),
     db: Session = Depends(get_db),
 ):
     """Get current subscription status."""
-    subscription = db.query(Subscription).filter(
-        Subscription.client_id == client.id
-    ).order_by(Subscription.created_at.desc()).first()
+    subscription = (
+        db.query(Subscription)
+        .filter(Subscription.client_id == client.id)
+        .order_by(Subscription.created_at.desc())
+        .first()
+    )
 
     if not subscription:
         return None
@@ -212,9 +215,9 @@ def list_payments(
     db: Session = Depends(get_db),
 ):
     """List payment history."""
-    payments = db.query(Payment).filter(
-        Payment.client_id == client.id
-    ).order_by(Payment.created_at.desc()).limit(limit).all()
+    payments = (
+        db.query(Payment).filter(Payment.client_id == client.id).order_by(Payment.created_at.desc()).limit(limit).all()
+    )
 
     return {
         "payments": [
@@ -241,15 +244,13 @@ async def stripe_webhook(
 ):
     """Handle Stripe webhook events."""
     payload = await request.body()
-    webhook_secret = settings.stripe_webhook_secret if hasattr(settings, 'stripe_webhook_secret') else None
+    webhook_secret = settings.stripe_webhook_secret if hasattr(settings, "stripe_webhook_secret") else None
 
     if not webhook_secret:
         raise HTTPException(status_code=500, detail="Webhook secret not configured")
 
     try:
-        event = stripe.Webhook.construct_event(
-            payload, stripe_signature, webhook_secret
-        )
+        event = stripe.Webhook.construct_event(payload, stripe_signature, webhook_secret)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid payload")
     except stripe.error.SignatureVerificationError:
@@ -293,9 +294,7 @@ async def stripe_webhook(
     elif event["type"] == "invoice.paid":
         invoice = event["data"]["object"]
         # Find client by customer ID
-        sub = db.query(Subscription).filter(
-            Subscription.stripe_customer_id == invoice["customer"]
-        ).first()
+        sub = db.query(Subscription).filter(Subscription.stripe_customer_id == invoice["customer"]).first()
 
         if sub:
             stripe_service.record_payment(

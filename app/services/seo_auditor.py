@@ -8,16 +8,14 @@ Performs comprehensive SEO audits including:
 - AI-powered insights via Claude
 """
 
-import asyncio
-import httpx
 from datetime import datetime
-from typing import Optional
+
+import httpx
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 
-from app.models.audit import Audit, AuditCheck, AuditStatus, AuditCategory, SEO_CHECKS
-from app.models.website import Website
 from app.config import get_settings
+from app.models.audit import SEO_CHECKS, Audit, AuditCategory, AuditCheck, AuditStatus
 
 settings = get_settings()
 
@@ -108,11 +106,9 @@ class SEOAuditor:
 
         # Check robots.txt
         try:
-            robots_response = await self.client.get(
-                f"{audit.url_audited.rstrip('/')}/robots.txt"
-            )
+            robots_response = await self.client.get(f"{audit.url_audited.rstrip('/')}/robots.txt")
             robots_exists = robots_response.status_code == 200
-        except:
+        except Exception:
             robots_exists = False
 
         self._add_check(
@@ -124,11 +120,9 @@ class SEOAuditor:
 
         # Check sitemap
         try:
-            sitemap_response = await self.client.get(
-                f"{audit.url_audited.rstrip('/')}/sitemap.xml"
-            )
+            sitemap_response = await self.client.get(f"{audit.url_audited.rstrip('/')}/sitemap.xml")
             sitemap_exists = sitemap_response.status_code == 200
-        except:
+        except Exception:
             sitemap_exists = False
 
         self._add_check(
@@ -373,10 +367,9 @@ class SEOAuditor:
 
             # Gather check results
             failed_checks = [c for c in audit.checks if not c.passed]
-            check_summary = "\n".join([
-                f"- {c.title}: {c.current_value} (expected: {c.expected_value})"
-                for c in failed_checks[:10]
-            ])
+            check_summary = "\n".join(
+                [f"- {c.title}: {c.current_value} (expected: {c.expected_value})" for c in failed_checks[:10]]
+            )
 
             prompt = f"""Analyze these SEO audit results for {audit.url_audited} and provide:
 1. A brief summary (2-3 sentences)
@@ -435,10 +428,10 @@ Overall score: {audit.overall_score}/100
         audit: Audit,
         check_name: str,
         passed: bool,
-        score: Optional[int] = None,
-        current_value: Optional[str] = None,
-        expected_value: Optional[str] = None,
-        recommendation: Optional[str] = None,
+        score: int | None = None,
+        current_value: str | None = None,
+        expected_value: str | None = None,
+        recommendation: str | None = None,
         severity: str = "info",
     ):
         """Add a check result to the audit."""

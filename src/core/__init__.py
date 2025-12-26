@@ -7,7 +7,7 @@ This module contains the shared SEO engine used by all tiers:
 - Paid (customer tiers: Starter, Pro, Enterprise, Agency)
 """
 
-from .tiers import TierManager, Tier
 from .auditor import SEOAuditor
+from .tiers import Tier, TierManager
 
 __all__ = ["TierManager", "Tier", "SEOAuditor"]

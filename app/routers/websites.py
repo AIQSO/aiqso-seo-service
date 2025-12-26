@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from pydantic import BaseModel, HttpUrl
-from typing import Optional
-from datetime import datetime
 import secrets
+from datetime import datetime
+
 import tldextract
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, HttpUrl
+from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.website import Website
 from app.models.client import Client
+from app.models.website import Website
 
 router = APIRouter()
 
@@ -17,22 +17,22 @@ router = APIRouter()
 class WebsiteCreate(BaseModel):
     client_id: int
     url: HttpUrl
-    name: Optional[str] = None
+    name: str | None = None
 
 
 class WebsiteResponse(BaseModel):
     id: int
     client_id: int
     domain: str
-    name: Optional[str]
+    name: str | None
     url: str
     is_active: bool
     is_verified: bool
-    last_audit_at: Optional[datetime]
-    last_audit_score: Optional[int]
-    performance_score: Optional[int]
-    seo_score: Optional[int]
-    accessibility_score: Optional[int]
+    last_audit_at: datetime | None
+    last_audit_score: int | None
+    performance_score: int | None
+    seo_score: int | None
+    accessibility_score: int | None
     keywords_count: int = 0
     created_at: datetime
 
@@ -47,17 +47,13 @@ async def create_website(website: WebsiteCreate, db: Session = Depends(get_db)):
     # Check client exists
     client = db.query(Client).filter(Client.id == website.client_id).first()
     if not client:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Client not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
 
     # Check tier limits
     current_count = len(client.websites)
     if not client.can_add_website(current_count):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Website limit reached for {client.tier.value} tier"
+            status_code=status.HTTP_403_FORBIDDEN, detail=f"Website limit reached for {client.tier.value} tier"
         )
 
     # Extract domain
@@ -66,15 +62,9 @@ async def create_website(website: WebsiteCreate, db: Session = Depends(get_db)):
     domain = f"{extracted.domain}.{extracted.suffix}"
 
     # Check if domain already exists for this client
-    existing = db.query(Website).filter(
-        Website.client_id == website.client_id,
-        Website.domain == domain
-    ).first()
+    existing = db.query(Website).filter(Website.client_id == website.client_id, Website.domain == domain).first()
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Domain already added"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Domain already added")
 
     # Generate verification token
     verification_token = secrets.token_urlsafe(32)
@@ -97,12 +87,7 @@ async def create_website(website: WebsiteCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=list[WebsiteResponse])
-async def list_websites(
-    client_id: Optional[int] = None,
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
-):
+async def list_websites(client_id: int | None = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """List all websites."""
     query = db.query(Website)
     if client_id:
@@ -124,10 +109,7 @@ async def get_website(website_id: int, db: Session = Depends(get_db)):
     """Get a specific website."""
     website = db.query(Website).filter(Website.id == website_id).first()
     if not website:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Website not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Website not found")
 
     return WebsiteResponse(
         **website.__dict__,
@@ -140,10 +122,7 @@ async def get_verification_info(website_id: int, db: Session = Depends(get_db)):
     """Get verification instructions for a website."""
     website = db.query(Website).filter(Website.id == website_id).first()
     if not website:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Website not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Website not found")
 
     if website.is_verified:
         return {"status": "already_verified"}
@@ -162,7 +141,7 @@ async def get_verification_info(website_id: int, db: Session = Depends(get_db)):
             },
             {
                 "method": "dns_txt",
-                "instructions": f'Add a TXT record to your DNS: aiqso-verify={website.verification_token}',
+                "instructions": f"Add a TXT record to your DNS: aiqso-verify={website.verification_token}",
             },
         ],
     }
@@ -173,10 +152,7 @@ async def verify_website(website_id: int, db: Session = Depends(get_db)):
     """Verify website ownership."""
     website = db.query(Website).filter(Website.id == website_id).first()
     if not website:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Website not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Website not found")
 
     if website.is_verified:
         return {"status": "already_verified"}
@@ -194,10 +170,7 @@ async def delete_website(website_id: int, db: Session = Depends(get_db)):
     """Delete a website."""
     website = db.query(Website).filter(Website.id == website_id).first()
     if not website:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Website not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Website not found")
 
     db.delete(website)
     db.commit()

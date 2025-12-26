@@ -14,6 +14,7 @@ def _test_env():
     # Clear cached settings if imported elsewhere.
     try:
         from app.config import get_settings
+
         get_settings.cache_clear()
     except Exception:
         pass

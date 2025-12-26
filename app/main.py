@@ -1,12 +1,12 @@
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from app.config import get_settings
-from app.logging_config import configure_logging
 from app.database import init_db
-from app.routers import audits, clients, websites, keywords, reports, health
-from app.routers import billing, worklog, portal, odoo
+from app.logging_config import configure_logging
+from app.routers import audits, billing, clients, health, keywords, odoo, portal, reports, websites, worklog
 from app.security import require_client
 
 settings = get_settings()
@@ -131,4 +131,5 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8002)

@@ -4,17 +4,17 @@ Customer Portal API Router
 Public-facing endpoints for customers to view their SEO data.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from typing import Optional, List
-from pydantic import BaseModel
 from datetime import datetime, timedelta
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from app.database import get_db
-from app.models.client import Client
-from app.models.website import Website
 from app.models.audit import Audit, AuditStatus
+from app.models.client import Client
 from app.models.keyword import Keyword
+from app.models.website import Website
 from app.routers.billing import get_current_client
 
 router = APIRouter(prefix="/portal", tags=["Customer Portal"])
@@ -25,16 +25,16 @@ class DashboardStats(BaseModel):
     total_websites: int
     total_keywords: int
     total_audits: int
-    avg_seo_score: Optional[float]
+    avg_seo_score: float | None
     issues_to_fix: int
-    recent_score_change: Optional[float]
+    recent_score_change: float | None
 
 
 class WebsiteSummary(BaseModel):
     id: int
     domain: str
-    last_audit_score: Optional[int]
-    last_audit_at: Optional[str]
+    last_audit_score: int | None
+    last_audit_at: str | None
     issues_count: int
     warnings_count: int
     status: str
@@ -47,8 +47,8 @@ class AuditSummary(BaseModel):
     status: str
     issues_found: int
     warnings_found: int
-    completed_at: Optional[str]
-    duration_seconds: Optional[float]
+    completed_at: str | None
+    duration_seconds: float | None
 
 
 class ScoreHistory(BaseModel):
@@ -62,8 +62,8 @@ class IssueItem(BaseModel):
     title: str
     severity: str
     category: str
-    current_value: Optional[str]
-    recommendation: Optional[str]
+    current_value: str | None
+    recommendation: str | None
     status: str
 
 
@@ -74,19 +74,13 @@ def get_dashboard(
 ):
     """Get dashboard overview stats."""
     # Count websites
-    total_websites = db.query(Website).filter(
-        Website.client_id == client.id
-    ).count()
+    total_websites = db.query(Website).filter(Website.client_id == client.id).count()
 
     # Count keywords
-    total_keywords = db.query(Keyword).filter(
-        Keyword.website.has(client_id=client.id)
-    ).count()
+    total_keywords = db.query(Keyword).filter(Keyword.website.has(client_id=client.id)).count()
 
     # Count audits
-    total_audits = db.query(Audit).filter(
-        Audit.website.has(client_id=client.id)
-    ).count()
+    total_audits = db.query(Audit).filter(Audit.website.has(client_id=client.id)).count()
 
     # Average score from latest audits per website
     websites = db.query(Website).filter(Website.client_id == client.id).all()
@@ -95,18 +89,26 @@ def get_dashboard(
 
     # Issues to fix (from tracked issues)
     from app.models.worklog import IssueTracker, WorkStatus
-    issues_count = db.query(IssueTracker).filter(
-        IssueTracker.client_id == client.id,
-        IssueTracker.status != WorkStatus.COMPLETED
-    ).count()
+
+    issues_count = (
+        db.query(IssueTracker)
+        .filter(IssueTracker.client_id == client.id, IssueTracker.status != WorkStatus.COMPLETED)
+        .count()
+    )
 
     # Score change (compare to 30 days ago)
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-    old_audits = db.query(Audit).filter(
-        Audit.website.has(client_id=client.id),
-        Audit.completed_at <= thirty_days_ago,
-        Audit.status == AuditStatus.COMPLETED
-    ).order_by(Audit.completed_at.desc()).limit(len(websites)).all()
+    old_audits = (
+        db.query(Audit)
+        .filter(
+            Audit.website.has(client_id=client.id),
+            Audit.completed_at <= thirty_days_ago,
+            Audit.status == AuditStatus.COMPLETED,
+        )
+        .order_by(Audit.completed_at.desc())
+        .limit(len(websites))
+        .all()
+    )
 
     old_scores = [a.overall_score for a in old_audits if a.overall_score]
     old_avg = sum(old_scores) / len(old_scores) if old_scores else None
@@ -122,38 +124,44 @@ def get_dashboard(
     )
 
 
-@router.get("/websites", response_model=List[WebsiteSummary])
+@router.get("/websites", response_model=list[WebsiteSummary])
 def list_websites(
     client: Client = Depends(get_current_client),
     db: Session = Depends(get_db),
 ):
     """List all websites with summary stats."""
-    websites = db.query(Website).filter(
-        Website.client_id == client.id
-    ).order_by(Website.created_at.desc()).all()
+    websites = db.query(Website).filter(Website.client_id == client.id).order_by(Website.created_at.desc()).all()
 
     results = []
     for site in websites:
         # Get latest audit
-        latest_audit = db.query(Audit).filter(
-            Audit.website_id == site.id,
-            Audit.status == AuditStatus.COMPLETED
-        ).order_by(Audit.completed_at.desc()).first()
+        latest_audit = (
+            db.query(Audit)
+            .filter(Audit.website_id == site.id, Audit.status == AuditStatus.COMPLETED)
+            .order_by(Audit.completed_at.desc())
+            .first()
+        )
 
-        results.append(WebsiteSummary(
-            id=site.id,
-            domain=site.domain,
-            last_audit_score=latest_audit.overall_score if latest_audit else None,
-            last_audit_at=latest_audit.completed_at.isoformat() if latest_audit and latest_audit.completed_at else None,
-            issues_count=latest_audit.issues_found if latest_audit else 0,
-            warnings_count=latest_audit.warnings_found if latest_audit else 0,
-            status="healthy" if (latest_audit and latest_audit.overall_score and latest_audit.overall_score >= 80) else "needs_attention",
-        ))
+        results.append(
+            WebsiteSummary(
+                id=site.id,
+                domain=site.domain,
+                last_audit_score=latest_audit.overall_score if latest_audit else None,
+                last_audit_at=latest_audit.completed_at.isoformat()
+                if latest_audit and latest_audit.completed_at
+                else None,
+                issues_count=latest_audit.issues_found if latest_audit else 0,
+                warnings_count=latest_audit.warnings_found if latest_audit else 0,
+                status="healthy"
+                if (latest_audit and latest_audit.overall_score and latest_audit.overall_score >= 80)
+                else "needs_attention",
+            )
+        )
 
     return results
 
 
-@router.get("/websites/{website_id}/audits", response_model=List[AuditSummary])
+@router.get("/websites/{website_id}/audits", response_model=list[AuditSummary])
 def list_website_audits(
     website_id: int,
     limit: int = Query(20, le=100),
@@ -162,17 +170,12 @@ def list_website_audits(
 ):
     """List audits for a specific website."""
     # Verify ownership
-    website = db.query(Website).filter(
-        Website.id == website_id,
-        Website.client_id == client.id
-    ).first()
+    website = db.query(Website).filter(Website.id == website_id, Website.client_id == client.id).first()
 
     if not website:
         raise HTTPException(status_code=404, detail="Website not found")
 
-    audits = db.query(Audit).filter(
-        Audit.website_id == website_id
-    ).order_by(Audit.created_at.desc()).limit(limit).all()
+    audits = db.query(Audit).filter(Audit.website_id == website_id).order_by(Audit.created_at.desc()).limit(limit).all()
 
     return [
         AuditSummary(
@@ -189,7 +192,7 @@ def list_website_audits(
     ]
 
 
-@router.get("/websites/{website_id}/score-history", response_model=List[ScoreHistory])
+@router.get("/websites/{website_id}/score-history", response_model=list[ScoreHistory])
 def get_score_history(
     website_id: int,
     days: int = Query(30, le=365),
@@ -198,21 +201,19 @@ def get_score_history(
 ):
     """Get score history for a website."""
     # Verify ownership
-    website = db.query(Website).filter(
-        Website.id == website_id,
-        Website.client_id == client.id
-    ).first()
+    website = db.query(Website).filter(Website.id == website_id, Website.client_id == client.id).first()
 
     if not website:
         raise HTTPException(status_code=404, detail="Website not found")
 
     since = datetime.utcnow() - timedelta(days=days)
 
-    audits = db.query(Audit).filter(
-        Audit.website_id == website_id,
-        Audit.status == AuditStatus.COMPLETED,
-        Audit.completed_at >= since
-    ).order_by(Audit.completed_at.asc()).all()
+    audits = (
+        db.query(Audit)
+        .filter(Audit.website_id == website_id, Audit.status == AuditStatus.COMPLETED, Audit.completed_at >= since)
+        .order_by(Audit.completed_at.asc())
+        .all()
+    )
 
     return [
         ScoreHistory(
@@ -223,10 +224,10 @@ def get_score_history(
     ]
 
 
-@router.get("/websites/{website_id}/issues", response_model=List[IssueItem])
+@router.get("/websites/{website_id}/issues", response_model=list[IssueItem])
 def list_website_issues(
     website_id: int,
-    status: Optional[str] = None,
+    status: str | None = None,
     client: Client = Depends(get_current_client),
     db: Session = Depends(get_db),
 ):
@@ -234,17 +235,12 @@ def list_website_issues(
     from app.models.worklog import IssueTracker, WorkStatus
 
     # Verify ownership
-    website = db.query(Website).filter(
-        Website.id == website_id,
-        Website.client_id == client.id
-    ).first()
+    website = db.query(Website).filter(Website.id == website_id, Website.client_id == client.id).first()
 
     if not website:
         raise HTTPException(status_code=404, detail="Website not found")
 
-    query = db.query(IssueTracker).filter(
-        IssueTracker.website_id == website_id
-    )
+    query = db.query(IssueTracker).filter(IssueTracker.website_id == website_id)
 
     if status:
         query = query.filter(IssueTracker.status == WorkStatus(status))
@@ -252,7 +248,7 @@ def list_website_issues(
     issues = query.order_by(
         # Critical first, then error, warning, info
         IssueTracker.severity.desc(),
-        IssueTracker.created_at.desc()
+        IssueTracker.created_at.desc(),
     ).all()
 
     return [
@@ -308,7 +304,7 @@ def get_audit_details(
             {
                 "name": c.check_name,
                 "title": c.title,
-                "category": c.category.value if hasattr(c.category, 'value') else c.category,
+                "category": c.category.value if hasattr(c.category, "value") else c.category,
                 "passed": c.passed,
                 "score": c.score,
                 "severity": c.severity,
@@ -325,28 +321,28 @@ def get_audit_details(
 @router.post("/audits/request")
 def request_audit(
     website_id: int,
-    url: Optional[str] = None,
+    url: str | None = None,
     client: Client = Depends(get_current_client),
     db: Session = Depends(get_db),
 ):
     """Request a new audit for a website."""
     # Verify ownership and tier limits
-    website = db.query(Website).filter(
-        Website.id == website_id,
-        Website.client_id == client.id
-    ).first()
+    website = db.query(Website).filter(Website.id == website_id, Website.client_id == client.id).first()
 
     if not website:
         raise HTTPException(status_code=404, detail="Website not found")
 
     # Check rate limits based on tier
-    limits = client.get_tier_limits()
+    client.get_tier_limits()
     today = datetime.utcnow().date()
 
-    audits_today = db.query(Audit).filter(
-        Audit.website.has(client_id=client.id),
-        Audit.created_at >= datetime.combine(today, datetime.min.time())
-    ).count()
+    audits_today = (
+        db.query(Audit)
+        .filter(
+            Audit.website.has(client_id=client.id), Audit.created_at >= datetime.combine(today, datetime.min.time())
+        )
+        .count()
+    )
 
     # Simple rate limit check (you'd want more sophisticated logic)
     max_per_day = {
@@ -357,10 +353,7 @@ def request_audit(
     }
     tier_name = client.tier.value.lower()
     if audits_today >= max_per_day.get(tier_name, 10):
-        raise HTTPException(
-            status_code=429,
-            detail=f"Daily audit limit reached ({max_per_day[tier_name]}/day)"
-        )
+        raise HTTPException(status_code=429, detail=f"Daily audit limit reached ({max_per_day[tier_name]}/day)")
 
     # Create audit
     audit_url = url or f"https://{website.domain}"
@@ -390,9 +383,12 @@ def get_account_info(
     """Get customer account information."""
     from app.models.billing import Subscription
 
-    subscription = db.query(Subscription).filter(
-        Subscription.client_id == client.id
-    ).order_by(Subscription.created_at.desc()).first()
+    subscription = (
+        db.query(Subscription)
+        .filter(Subscription.client_id == client.id)
+        .order_by(Subscription.created_at.desc())
+        .first()
+    )
 
     limits = client.get_tier_limits()
 
@@ -406,12 +402,18 @@ def get_account_info(
         "subscription": {
             "tier": client.tier.value,
             "status": subscription.status.value if subscription else "none",
-            "current_period_end": subscription.current_period_end.isoformat() if subscription and subscription.current_period_end else None,
-        } if subscription else None,
+            "current_period_end": subscription.current_period_end.isoformat()
+            if subscription and subscription.current_period_end
+            else None,
+        }
+        if subscription
+        else None,
         "limits": limits,
         "branding": {
             "brand_name": client.brand_name,
             "brand_logo_url": client.brand_logo_url,
             "brand_primary_color": client.brand_primary_color,
-        } if limits.get("white_label") else None,
+        }
+        if limits.get("white_label")
+        else None,
     }

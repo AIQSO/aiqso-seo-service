@@ -1,20 +1,23 @@
 import enum
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON, Enum, Text, Float
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import Base, TimestampMixin
 
 
 class AuditCategory(enum.Enum):
     """SEO audit check categories."""
+
     CONFIGURATION = "configuration"  # robots.txt, noindex, etc.
-    META = "meta"                    # Meta tags, titles, descriptions
-    CONTENT = "content"              # H1, alt tags, content length
-    PERFORMANCE = "performance"       # TTFB, file sizes, Core Web Vitals
+    META = "meta"  # Meta tags, titles, descriptions
+    CONTENT = "content"  # H1, alt tags, content length
+    PERFORMANCE = "performance"  # TTFB, file sizes, Core Web Vitals
 
 
 class AuditStatus(enum.Enum):
     """Audit run status."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -144,7 +147,6 @@ SEO_CHECKS = {
         "title": "HTTPS Enabled",
         "description": "Site should use HTTPS",
     },
-
     # Meta checks
     "title": {
         "category": AuditCategory.META,
@@ -176,7 +178,6 @@ SEO_CHECKS = {
         "title": "Viewport Meta Tag",
         "description": "Page should have viewport meta tag for mobile",
     },
-
     # Content checks
     "h1_tag": {
         "category": AuditCategory.CONTENT,
@@ -208,7 +209,6 @@ SEO_CHECKS = {
         "title": "Keyword Presence",
         "description": "Target keywords should appear in content",
     },
-
     # Performance checks
     "ttfb": {
         "category": AuditCategory.PERFORMANCE,

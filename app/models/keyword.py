@@ -1,12 +1,15 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON, Enum
-from sqlalchemy.orm import relationship
 import enum
+from datetime import datetime
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
+
 from app.models.base import Base, TimestampMixin
 
 
 class DeviceType(enum.Enum):
     """Device type for rank tracking."""
+
     DESKTOP = "desktop"
     MOBILE = "mobile"
 
@@ -60,6 +63,7 @@ class Keyword(Base, TimestampMixin):
 
         # Find ranking from X days ago
         from datetime import timedelta
+
         target_date = datetime.utcnow() - timedelta(days=days)
 
         current = sorted_rankings[0].position if sorted_rankings else None

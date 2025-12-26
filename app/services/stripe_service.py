@@ -4,14 +4,15 @@ Stripe Billing Service
 Handles subscription management, payments, and webhooks.
 """
 
-import stripe
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any
+
+import stripe
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.models.billing import Payment, PaymentStatus, Subscription, SubscriptionStatus
 from app.models.client import Client, ClientTier
-from app.models.billing import Subscription, Payment, SubscriptionStatus, PaymentStatus
 
 settings = get_settings()
 
@@ -46,7 +47,7 @@ class StripeService:
 
     def __init__(self, db: Session):
         self.db = db
-        stripe.api_key = settings.stripe_secret_key if hasattr(settings, 'stripe_secret_key') else None
+        stripe.api_key = settings.stripe_secret_key if hasattr(settings, "stripe_secret_key") else None
 
     def create_customer(self, client: Client) -> str:
         """Create a Stripe customer for a client."""
@@ -67,7 +68,7 @@ class StripeService:
         interval: str = "monthly",
         success_url: str = "",
         cancel_url: str = "",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a Stripe Checkout session for subscription."""
         price_config = STRIPE_PRICES.get(tier)
         if not price_config:
@@ -76,9 +77,7 @@ class StripeService:
         price_id = price_config.get(interval, price_config["monthly"])
 
         # Get or create Stripe customer
-        subscription = self.db.query(Subscription).filter(
-            Subscription.client_id == client.id
-        ).first()
+        subscription = self.db.query(Subscription).filter(Subscription.client_id == client.id).first()
 
         customer_id = subscription.stripe_customer_id if subscription else None
         if not customer_id:
@@ -87,10 +86,12 @@ class StripeService:
         session = stripe.checkout.Session.create(
             customer=customer_id,
             mode="subscription",
-            line_items=[{
-                "price": price_id,
-                "quantity": 1,
-            }],
+            line_items=[
+                {
+                    "price": price_id,
+                    "quantity": 1,
+                }
+            ],
             success_url=success_url or f"{settings.app_url}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=cancel_url or f"{settings.app_url}/billing/cancel",
             metadata={
@@ -153,14 +154,14 @@ class StripeService:
         self,
         stripe_subscription_id: str,
         status: str,
-        current_period_start: Optional[datetime] = None,
-        current_period_end: Optional[datetime] = None,
-        canceled_at: Optional[datetime] = None,
-    ) -> Optional[Subscription]:
+        current_period_start: datetime | None = None,
+        current_period_end: datetime | None = None,
+        canceled_at: datetime | None = None,
+    ) -> Subscription | None:
         """Update subscription status from webhook."""
-        subscription = self.db.query(Subscription).filter(
-            Subscription.stripe_subscription_id == stripe_subscription_id
-        ).first()
+        subscription = (
+            self.db.query(Subscription).filter(Subscription.stripe_subscription_id == stripe_subscription_id).first()
+        )
 
         if not subscription:
             return None
@@ -185,7 +186,7 @@ class StripeService:
         amount_cents: int,
         status: str,
         description: str = "",
-        subscription_id: Optional[int] = None,
+        subscription_id: int | None = None,
     ) -> Payment:
         """Record a payment from Stripe webhook."""
         payment = Payment(
@@ -206,9 +207,7 @@ class StripeService:
 
     def create_billing_portal_session(self, client: Client) -> str:
         """Create a Stripe Billing Portal session for self-service."""
-        subscription = self.db.query(Subscription).filter(
-            Subscription.client_id == client.id
-        ).first()
+        subscription = self.db.query(Subscription).filter(Subscription.client_id == client.id).first()
 
         if not subscription or not subscription.stripe_customer_id:
             raise ValueError("No active subscription found")
@@ -222,10 +221,14 @@ class StripeService:
 
     def cancel_subscription(self, client: Client, at_period_end: bool = True) -> bool:
         """Cancel a subscription."""
-        subscription = self.db.query(Subscription).filter(
-            Subscription.client_id == client.id,
-            Subscription.status.in_([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING]),
-        ).first()
+        subscription = (
+            self.db.query(Subscription)
+            .filter(
+                Subscription.client_id == client.id,
+                Subscription.status.in_([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING]),
+            )
+            .first()
+        )
 
         if not subscription or not subscription.stripe_subscription_id:
             return False
@@ -242,29 +245,29 @@ class StripeService:
 
         return True
 
-    def get_usage_summary(self, client_id: int) -> Dict[str, Any]:
+    def get_usage_summary(self, client_id: int) -> dict[str, Any]:
         """Get usage summary for billing."""
+
         from app.models.audit import Audit
-        from app.models.website import Website
         from app.models.keyword import Keyword
-        from datetime import timedelta
+        from app.models.website import Website
 
         # Current month
         now = datetime.utcnow()
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-        audits_this_month = self.db.query(Audit).filter(
-            Audit.website.has(client_id=client_id),
-            Audit.created_at >= month_start,
-        ).count()
+        audits_this_month = (
+            self.db.query(Audit)
+            .filter(
+                Audit.website.has(client_id=client_id),
+                Audit.created_at >= month_start,
+            )
+            .count()
+        )
 
-        total_websites = self.db.query(Website).filter(
-            Website.client_id == client_id
-        ).count()
+        total_websites = self.db.query(Website).filter(Website.client_id == client_id).count()
 
-        total_keywords = self.db.query(Keyword).filter(
-            Keyword.website.has(client_id=client_id)
-        ).count()
+        total_keywords = self.db.query(Keyword).filter(Keyword.website.has(client_id=client_id)).count()
 
         return {
             "audits_this_month": audits_this_month,

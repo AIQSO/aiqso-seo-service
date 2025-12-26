@@ -1,7 +1,8 @@
-from pydantic_settings import BaseSettings
-from pydantic import field_validator
 from functools import lru_cache
-from typing import Union, Literal
+from typing import Literal
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings
 
 
 class SettingsValidationError(ValueError):
@@ -70,7 +71,7 @@ class Settings(BaseSettings):
     require_api_key: bool = False  # When true, require X-API-Key or Authorization: Bearer for most API routes
 
     # CORS - accepts comma-separated string or list
-    cors_origins: Union[str, list[str]] = "http://localhost:3000,https://aiqso.io"
+    cors_origins: str | list[str] = "http://localhost:3000,https://aiqso.io"
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -109,7 +110,11 @@ class Settings(BaseSettings):
             if self.secret_key == "change-this-in-production" or len(self.secret_key) < 32:
                 errors.append("SECRET_KEY must be set to a long random value (>= 32 chars) in staging/production.")
 
-        if self.require_api_key and self.environment in {"staging", "production"} and self.secret_key == "change-this-in-production":
+        if (
+            self.require_api_key
+            and self.environment in {"staging", "production"}
+            and self.secret_key == "change-this-in-production"
+        ):
             errors.append("REQUIRE_API_KEY is enabled but SECRET_KEY is unsafe; set SECRET_KEY.")
 
         if not self.database_url:
@@ -119,7 +124,7 @@ class Settings(BaseSettings):
             raise SettingsValidationError("Invalid configuration: " + " ".join(errors))
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings()

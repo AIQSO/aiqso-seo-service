@@ -4,18 +4,15 @@ Work Log API Router
 Endpoints for tracking work performed for customers.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from typing import Optional, List
-from pydantic import BaseModel
 from datetime import datetime, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.client import Client
-from app.models.worklog import (
-    WorkLog, WorkStatus, WorkCategory,
-    Project, ProjectWorkItem, IssueTracker
-)
+from app.models.worklog import IssueTracker, Project, ProjectWorkItem, WorkCategory, WorkLog, WorkStatus
 from app.routers.billing import get_current_client
 
 router = APIRouter(prefix="/worklog", tags=["Work Log"])
@@ -24,88 +21,88 @@ router = APIRouter(prefix="/worklog", tags=["Work Log"])
 # Schemas
 class WorkLogCreate(BaseModel):
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     category: str = "other"
-    website_id: Optional[int] = None
-    estimated_minutes: Optional[int] = None
+    website_id: int | None = None
+    estimated_minutes: int | None = None
     is_billable: bool = True
     hourly_rate_cents: int = 15000
-    fixed_price_cents: Optional[int] = None
+    fixed_price_cents: int | None = None
 
 
 class WorkLogUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    status: Optional[str] = None
-    actual_minutes: Optional[int] = None
-    customer_notes: Optional[str] = None
-    internal_notes: Optional[str] = None
+    title: str | None = None
+    description: str | None = None
+    status: str | None = None
+    actual_minutes: int | None = None
+    customer_notes: str | None = None
+    internal_notes: str | None = None
 
 
 class WorkLogResponse(BaseModel):
     id: int
     title: str
-    description: Optional[str]
+    description: str | None
     category: str
     status: str
-    estimated_minutes: Optional[int]
-    actual_minutes: Optional[int]
+    estimated_minutes: int | None
+    actual_minutes: int | None
     is_billable: bool
     billable_amount: float
-    started_at: Optional[str]
-    completed_at: Optional[str]
-    customer_notes: Optional[str]
+    started_at: str | None
+    completed_at: str | None
+    customer_notes: str | None
 
 
 class ProjectCreate(BaseModel):
     name: str
-    description: Optional[str] = None
-    scope_document: Optional[str] = None
-    budget_cents: Optional[int] = None
+    description: str | None = None
+    scope_document: str | None = None
+    budget_cents: int | None = None
     is_fixed_price: bool = False
-    start_date: Optional[str] = None
-    due_date: Optional[str] = None
+    start_date: str | None = None
+    due_date: str | None = None
 
 
 class ProjectResponse(BaseModel):
     id: int
     name: str
-    description: Optional[str]
+    description: str | None
     status: str
-    budget: Optional[float]
+    budget: float | None
     is_fixed_price: bool
     total_logged_hours: float
     total_billable: float
-    start_date: Optional[str]
-    due_date: Optional[str]
+    start_date: str | None
+    due_date: str | None
 
 
 class IssueCreate(BaseModel):
     website_id: int
     check_name: str
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     severity: str = "warning"
     category: str
-    current_value: Optional[str] = None
-    expected_value: Optional[str] = None
-    recommendation: Optional[str] = None
-    fix_price_cents: Optional[int] = None
+    current_value: str | None = None
+    expected_value: str | None = None
+    recommendation: str | None = None
+    fix_price_cents: int | None = None
 
 
 class IssueResponse(BaseModel):
     id: int
     check_name: str
     title: str
-    description: Optional[str]
+    description: str | None
     severity: str
     category: str
     status: str
-    current_value: Optional[str]
-    expected_value: Optional[str]
-    recommendation: Optional[str]
-    fix_price: Optional[float]
-    resolved_at: Optional[str]
+    current_value: str | None
+    expected_value: str | None
+    recommendation: str | None
+    fix_price: float | None
+    resolved_at: str | None
 
 
 # Work Log endpoints
@@ -135,11 +132,11 @@ def create_work_log(
     return format_work_log(work_log)
 
 
-@router.get("/entries", response_model=List[WorkLogResponse])
+@router.get("/entries", response_model=list[WorkLogResponse])
 def list_work_logs(
-    status: Optional[str] = None,
-    category: Optional[str] = None,
-    website_id: Optional[int] = None,
+    status: str | None = None,
+    category: str | None = None,
+    website_id: int | None = None,
     limit: int = Query(50, le=200),
     offset: int = 0,
     client: Client = Depends(get_current_client),
@@ -166,10 +163,7 @@ def get_work_log(
     db: Session = Depends(get_db),
 ):
     """Get a specific work log entry."""
-    entry = db.query(WorkLog).filter(
-        WorkLog.id == entry_id,
-        WorkLog.client_id == client.id
-    ).first()
+    entry = db.query(WorkLog).filter(WorkLog.id == entry_id, WorkLog.client_id == client.id).first()
 
     if not entry:
         raise HTTPException(status_code=404, detail="Work log not found")
@@ -185,10 +179,7 @@ def update_work_log(
     db: Session = Depends(get_db),
 ):
     """Update a work log entry."""
-    entry = db.query(WorkLog).filter(
-        WorkLog.id == entry_id,
-        WorkLog.client_id == client.id
-    ).first()
+    entry = db.query(WorkLog).filter(WorkLog.id == entry_id, WorkLog.client_id == client.id).first()
 
     if not entry:
         raise HTTPException(status_code=404, detail="Work log not found")
@@ -223,10 +214,7 @@ def start_work(
     db: Session = Depends(get_db),
 ):
     """Start working on an entry (sets started_at)."""
-    entry = db.query(WorkLog).filter(
-        WorkLog.id == entry_id,
-        WorkLog.client_id == client.id
-    ).first()
+    entry = db.query(WorkLog).filter(WorkLog.id == entry_id, WorkLog.client_id == client.id).first()
 
     if not entry:
         raise HTTPException(status_code=404, detail="Work log not found")
@@ -241,16 +229,13 @@ def start_work(
 @router.post("/entries/{entry_id}/complete")
 def complete_work(
     entry_id: int,
-    actual_minutes: Optional[int] = None,
-    notes: Optional[str] = None,
+    actual_minutes: int | None = None,
+    notes: str | None = None,
     client: Client = Depends(get_current_client),
     db: Session = Depends(get_db),
 ):
     """Mark work as completed."""
-    entry = db.query(WorkLog).filter(
-        WorkLog.id == entry_id,
-        WorkLog.client_id == client.id
-    ).first()
+    entry = db.query(WorkLog).filter(WorkLog.id == entry_id, WorkLog.client_id == client.id).first()
 
     if not entry:
         raise HTTPException(status_code=404, detail="Work log not found")
@@ -302,9 +287,9 @@ def create_project(
     return format_project(proj)
 
 
-@router.get("/projects", response_model=List[ProjectResponse])
+@router.get("/projects", response_model=list[ProjectResponse])
 def list_projects(
-    status: Optional[str] = None,
+    status: str | None = None,
     client: Client = Depends(get_current_client),
     db: Session = Depends(get_db),
 ):
@@ -326,24 +311,19 @@ def add_work_to_project(
     db: Session = Depends(get_db),
 ):
     """Add a work log entry to a project."""
-    project = db.query(Project).filter(
-        Project.id == project_id,
-        Project.client_id == client.id
-    ).first()
+    project = db.query(Project).filter(Project.id == project_id, Project.client_id == client.id).first()
 
-    entry = db.query(WorkLog).filter(
-        WorkLog.id == entry_id,
-        WorkLog.client_id == client.id
-    ).first()
+    entry = db.query(WorkLog).filter(WorkLog.id == entry_id, WorkLog.client_id == client.id).first()
 
     if not project or not entry:
         raise HTTPException(status_code=404, detail="Project or entry not found")
 
     # Check if already added
-    existing = db.query(ProjectWorkItem).filter(
-        ProjectWorkItem.project_id == project_id,
-        ProjectWorkItem.work_log_id == entry_id
-    ).first()
+    existing = (
+        db.query(ProjectWorkItem)
+        .filter(ProjectWorkItem.project_id == project_id, ProjectWorkItem.work_log_id == entry_id)
+        .first()
+    )
 
     if existing:
         raise HTTPException(status_code=400, detail="Entry already in project")
@@ -386,11 +366,11 @@ def create_issue(
     return format_issue(tracker)
 
 
-@router.get("/issues", response_model=List[IssueResponse])
+@router.get("/issues", response_model=list[IssueResponse])
 def list_issues(
-    status: Optional[str] = None,
-    website_id: Optional[int] = None,
-    severity: Optional[str] = None,
+    status: str | None = None,
+    website_id: int | None = None,
+    severity: str | None = None,
     client: Client = Depends(get_current_client),
     db: Session = Depends(get_db),
 ):
@@ -411,16 +391,13 @@ def list_issues(
 @router.post("/issues/{issue_id}/resolve")
 def resolve_issue(
     issue_id: int,
-    notes: Optional[str] = None,
-    work_log_id: Optional[int] = None,
+    notes: str | None = None,
+    work_log_id: int | None = None,
     client: Client = Depends(get_current_client),
     db: Session = Depends(get_db),
 ):
     """Mark an issue as resolved."""
-    issue = db.query(IssueTracker).filter(
-        IssueTracker.id == issue_id,
-        IssueTracker.client_id == client.id
-    ).first()
+    issue = db.query(IssueTracker).filter(IssueTracker.id == issue_id, IssueTracker.client_id == client.id).first()
 
     if not issue:
         raise HTTPException(status_code=404, detail="Issue not found")
@@ -446,10 +423,7 @@ def get_work_summary(
     """Get work summary for a period."""
     since = datetime.utcnow() - timedelta(days=days)
 
-    entries = db.query(WorkLog).filter(
-        WorkLog.client_id == client.id,
-        WorkLog.created_at >= since
-    ).all()
+    entries = db.query(WorkLog).filter(WorkLog.client_id == client.id, WorkLog.created_at >= since).all()
 
     total_minutes = sum(e.actual_minutes or 0 for e in entries)
     total_billable = sum(e.billable_amount_cents for e in entries)

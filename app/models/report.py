@@ -1,12 +1,14 @@
 import enum
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON, Enum, Text
+
+from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import Base, TimestampMixin
 
 
 class ReportType(enum.Enum):
     """Types of SEO reports."""
+
     WEEKLY = "weekly"
     MONTHLY = "monthly"
     AUDIT = "audit"
@@ -16,6 +18,7 @@ class ReportType(enum.Enum):
 
 class ReportStatus(enum.Enum):
     """Report generation status."""
+
     PENDING = "pending"
     GENERATING = "generating"
     COMPLETED = "completed"

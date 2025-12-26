@@ -5,14 +5,16 @@ Tracks work performed for customers, used for billing and reporting.
 """
 
 import enum
-from datetime import datetime, timedelta
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, ForeignKey, Numeric, Text
+
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import Base, TimestampMixin
 
 
 class WorkStatus(enum.Enum):
     """Work item status."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -22,14 +24,15 @@ class WorkStatus(enum.Enum):
 
 class WorkCategory(enum.Enum):
     """Categories of SEO work."""
-    AUDIT = "audit"                    # Running audits
-    TECHNICAL_SEO = "technical_seo"    # Fixing technical issues
-    ON_PAGE_SEO = "on_page_seo"        # Meta tags, content optimization
-    CONTENT = "content"                # Content creation/optimization
-    LINK_BUILDING = "link_building"    # Backlink work
-    REPORTING = "reporting"            # Creating reports
-    CONSULTATION = "consultation"      # Meetings, calls, advice
-    RESEARCH = "research"              # Keyword research, competitor analysis
+
+    AUDIT = "audit"  # Running audits
+    TECHNICAL_SEO = "technical_seo"  # Fixing technical issues
+    ON_PAGE_SEO = "on_page_seo"  # Meta tags, content optimization
+    CONTENT = "content"  # Content creation/optimization
+    LINK_BUILDING = "link_building"  # Backlink work
+    REPORTING = "reporting"  # Creating reports
+    CONSULTATION = "consultation"  # Meetings, calls, advice
+    RESEARCH = "research"  # Keyword research, competitor analysis
     OTHER = "other"
 
 
@@ -120,20 +123,12 @@ class Project(Base, TimestampMixin):
     @property
     def total_logged_minutes(self) -> int:
         """Sum of all work item minutes."""
-        return sum(
-            item.work_log.actual_minutes or 0
-            for item in self.work_items
-            if item.work_log
-        )
+        return sum(item.work_log.actual_minutes or 0 for item in self.work_items if item.work_log)
 
     @property
     def total_billable_cents(self) -> int:
         """Sum of all billable amounts."""
-        return sum(
-            item.work_log.billable_amount_cents
-            for item in self.work_items
-            if item.work_log
-        )
+        return sum(item.work_log.billable_amount_cents for item in self.work_items if item.work_log)
 
 
 class ProjectWorkItem(Base, TimestampMixin):

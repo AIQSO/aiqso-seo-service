@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
-from sqlalchemy.orm import Session
-from pydantic import BaseModel, HttpUrl
-from typing import Optional
 from datetime import datetime
 
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from pydantic import BaseModel, HttpUrl
+from sqlalchemy.orm import Session
+
 from app.database import get_db
-from app.models.audit import Audit, AuditStatus, AuditCheck, AuditCategory
+from app.models.audit import Audit, AuditCategory, AuditStatus
 from app.models.website import Website
 from app.services.seo_auditor import SEOAuditor
 
@@ -15,7 +15,7 @@ router = APIRouter()
 # Pydantic schemas
 class AuditCreate(BaseModel):
     website_id: int
-    url: Optional[HttpUrl] = None  # Specific URL or homepage
+    url: HttpUrl | None = None  # Specific URL or homepage
     include_lighthouse: bool = True
     include_ai_insights: bool = True
     full_site: bool = False
@@ -25,12 +25,12 @@ class AuditCheckResponse(BaseModel):
     check_name: str
     category: AuditCategory
     passed: bool
-    score: Optional[int]
+    score: int | None
     severity: str
     title: str
-    description: Optional[str]
-    current_value: Optional[str]
-    recommendation: Optional[str]
+    description: str | None
+    current_value: str | None
+    recommendation: str | None
 
     class Config:
         from_attributes = True
@@ -41,18 +41,18 @@ class AuditResponse(BaseModel):
     website_id: int
     status: AuditStatus
     url_audited: str
-    overall_score: Optional[int]
+    overall_score: int | None
     pages_crawled: int
     issues_found: int
     warnings_found: int
-    configuration_score: Optional[int]
-    meta_score: Optional[int]
-    content_score: Optional[int]
-    performance_score: Optional[int]
-    ai_summary: Optional[str]
-    started_at: Optional[datetime]
-    completed_at: Optional[datetime]
-    duration_seconds: Optional[float]
+    configuration_score: int | None
+    meta_score: int | None
+    content_score: int | None
+    performance_score: int | None
+    ai_summary: str | None
+    started_at: datetime | None
+    completed_at: datetime | None
+    duration_seconds: float | None
     checks: list[AuditCheckResponse] = []
     created_at: datetime
 
@@ -65,7 +65,7 @@ class AuditSummary(BaseModel):
     website_id: int
     domain: str
     status: AuditStatus
-    overall_score: Optional[int]
+    overall_score: int | None
     issues_found: int
     created_at: datetime
 
@@ -77,6 +77,7 @@ class AuditSummary(BaseModel):
 async def run_audit_task(audit_id: int, include_lighthouse: bool, include_ai: bool):
     """Background task to run SEO audit."""
     from app.database import SessionLocal
+
     db = SessionLocal()
     try:
         auditor = SEOAuditor(db)
@@ -87,19 +88,12 @@ async def run_audit_task(audit_id: int, include_lighthouse: bool, include_ai: bo
 
 # Endpoints
 @router.post("/", response_model=AuditResponse, status_code=status.HTTP_201_CREATED)
-async def create_audit(
-    audit_request: AuditCreate,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
+async def create_audit(audit_request: AuditCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Start a new SEO audit for a website."""
     # Get website
     website = db.query(Website).filter(Website.id == audit_request.website_id).first()
     if not website:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Website not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Website not found")
 
     # Determine URL to audit
     url = str(audit_request.url) if audit_request.url else website.url
@@ -128,11 +122,11 @@ async def create_audit(
 
 @router.get("/", response_model=list[AuditSummary])
 async def list_audits(
-    website_id: Optional[int] = None,
-    status: Optional[AuditStatus] = None,
+    website_id: int | None = None,
+    status: AuditStatus | None = None,
     skip: int = 0,
     limit: int = 50,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """List all audits."""
     query = db.query(Audit).join(Website)
@@ -163,10 +157,7 @@ async def get_audit(audit_id: int, db: Session = Depends(get_db)):
     """Get a specific audit with all checks."""
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Audit not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit not found")
 
     checks = [AuditCheckResponse(**c.__dict__) for c in audit.checks]
 
@@ -175,18 +166,12 @@ async def get_audit(audit_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{audit_id}/checks", response_model=list[AuditCheckResponse])
 async def get_audit_checks(
-    audit_id: int,
-    category: Optional[AuditCategory] = None,
-    passed: Optional[bool] = None,
-    db: Session = Depends(get_db)
+    audit_id: int, category: AuditCategory | None = None, passed: bool | None = None, db: Session = Depends(get_db)
 ):
     """Get checks for a specific audit with filtering."""
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Audit not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit not found")
 
     checks = audit.checks
     if category:
@@ -198,24 +183,14 @@ async def get_audit_checks(
 
 
 @router.post("/{audit_id}/retry", response_model=AuditResponse)
-async def retry_audit(
-    audit_id: int,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
+async def retry_audit(audit_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Retry a failed audit."""
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Audit not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit not found")
 
     if audit.status not in [AuditStatus.FAILED, AuditStatus.COMPLETED]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Can only retry failed or completed audits"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Can only retry failed or completed audits")
 
     # Reset audit
     audit.status = AuditStatus.PENDING
@@ -241,10 +216,7 @@ async def delete_audit(audit_id: int, db: Session = Depends(get_db)):
     """Delete an audit."""
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Audit not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit not found")
 
     db.delete(audit)
     db.commit()

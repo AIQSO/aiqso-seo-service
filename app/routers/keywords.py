@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from app.database import get_db
-from app.models.keyword import Keyword, KeywordRanking, DeviceType
-from app.models.website import Website
 from app.models.client import Client
+from app.models.keyword import DeviceType, Keyword, KeywordRanking
+from app.models.website import Website
 
 router = APIRouter()
 
@@ -26,12 +26,12 @@ class KeywordResponse(BaseModel):
     keyword: str
     device: DeviceType
     country: str
-    position: Optional[int]
-    url: Optional[str]
-    last_updated: Optional[datetime]
-    best_position: Optional[int]
-    search_volume: Optional[int]
-    position_change_7d: Optional[int] = None
+    position: int | None
+    url: str | None
+    last_updated: datetime | None
+    best_position: int | None
+    search_volume: int | None
+    position_change_7d: int | None = None
     tags: list[str]
     is_active: bool
     created_at: datetime
@@ -42,10 +42,10 @@ class KeywordResponse(BaseModel):
 
 class KeywordRankingResponse(BaseModel):
     date: datetime
-    position: Optional[int]
-    url: Optional[str]
-    impressions: Optional[int]
-    clicks: Optional[int]
+    position: int | None
+    url: str | None
+    impressions: int | None
+    clicks: int | None
 
     class Config:
         from_attributes = True
@@ -61,16 +61,17 @@ async def create_keyword(keyword: KeywordCreate, db: Session = Depends(get_db)):
     client = db.query(Client).filter(Client.id == website.client_id).first()
     current_count = sum(len(w.keywords) for w in client.websites)
     if not client.can_add_keyword(current_count):
-        raise HTTPException(
-            status_code=403,
-            detail=f"Keyword limit reached for {client.tier.value} tier"
-        )
+        raise HTTPException(status_code=403, detail=f"Keyword limit reached for {client.tier.value} tier")
 
-    existing = db.query(Keyword).filter(
-        Keyword.website_id == keyword.website_id,
-        Keyword.keyword == keyword.keyword,
-        Keyword.device == keyword.device,
-    ).first()
+    existing = (
+        db.query(Keyword)
+        .filter(
+            Keyword.website_id == keyword.website_id,
+            Keyword.keyword == keyword.keyword,
+            Keyword.device == keyword.device,
+        )
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=400, detail="Keyword already tracked")
 
@@ -83,12 +84,7 @@ async def create_keyword(keyword: KeywordCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=list[KeywordResponse])
-async def list_keywords(
-    website_id: Optional[int] = None,
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
-):
+async def list_keywords(website_id: int | None = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """List keywords."""
     query = db.query(Keyword)
     if website_id:
@@ -119,23 +115,25 @@ async def get_keyword(keyword_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{keyword_id}/history", response_model=list[KeywordRankingResponse])
-async def get_keyword_history(
-    keyword_id: int,
-    days: int = 30,
-    db: Session = Depends(get_db)
-):
+async def get_keyword_history(keyword_id: int, days: int = 30, db: Session = Depends(get_db)):
     """Get ranking history for a keyword."""
     keyword = db.query(Keyword).filter(Keyword.id == keyword_id).first()
     if not keyword:
         raise HTTPException(status_code=404, detail="Keyword not found")
 
     from datetime import timedelta
+
     cutoff = datetime.utcnow() - timedelta(days=days)
 
-    rankings = db.query(KeywordRanking).filter(
-        KeywordRanking.keyword_id == keyword_id,
-        KeywordRanking.date >= cutoff,
-    ).order_by(KeywordRanking.date.desc()).all()
+    rankings = (
+        db.query(KeywordRanking)
+        .filter(
+            KeywordRanking.keyword_id == keyword_id,
+            KeywordRanking.date >= cutoff,
+        )
+        .order_by(KeywordRanking.date.desc())
+        .all()
+    )
 
     return [KeywordRankingResponse(**r.__dict__) for r in rankings]
 

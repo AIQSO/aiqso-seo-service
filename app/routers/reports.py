@@ -1,19 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
-from sqlalchemy.orm import Session
+from datetime import datetime
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.report import Report, ReportType, ReportStatus
 from app.models.client import Client
+from app.models.report import Report, ReportStatus, ReportType
 
 router = APIRouter()
 
 
 class ReportCreate(BaseModel):
     client_id: int
-    website_id: Optional[int] = None
+    website_id: int | None = None
     report_type: ReportType
     period_start: datetime
     period_end: datetime
@@ -22,15 +22,15 @@ class ReportCreate(BaseModel):
 class ReportResponse(BaseModel):
     id: int
     client_id: int
-    website_id: Optional[int]
+    website_id: int | None
     report_type: ReportType
     title: str
     status: ReportStatus
     period_start: datetime
     period_end: datetime
-    summary: Optional[str]
-    pdf_url: Optional[str]
-    ai_insights: Optional[str]
+    summary: str | None
+    pdf_url: str | None
+    ai_insights: str | None
     created_at: datetime
 
     class Config:
@@ -38,11 +38,7 @@ class ReportResponse(BaseModel):
 
 
 @router.post("/", response_model=ReportResponse, status_code=status.HTTP_201_CREATED)
-async def create_report(
-    report: ReportCreate,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
+async def create_report(report: ReportCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Generate a new report."""
     client = db.query(Client).filter(Client.id == report.client_id).first()
     if not client:
@@ -67,11 +63,11 @@ async def create_report(
 
 @router.get("/", response_model=list[ReportResponse])
 async def list_reports(
-    client_id: Optional[int] = None,
-    report_type: Optional[ReportType] = None,
+    client_id: int | None = None,
+    report_type: ReportType | None = None,
     skip: int = 0,
     limit: int = 50,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """List reports."""
     query = db.query(Report)
