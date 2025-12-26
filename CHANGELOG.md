@@ -10,9 +10,10 @@ All notable changes to this repository are documented in this file.
   - `.pre-commit-config.yaml` with Python linting and formatting hooks
   - `requirements-dev.txt` with development dependencies
   - GitHub Actions CI workflow (`.github/workflows/ci.yml`)
-    - Python lint, typecheck, and test jobs (Python 3.11/3.12)
-    - Dashboard lint, typecheck, and build jobs
+    - Python lint, typecheck (non-blocking), and test jobs (Python 3.11/3.12)
+    - Dashboard lint (non-blocking), typecheck (non-blocking), and build (non-blocking) jobs
     - Docker build verification
+    - Note: Some checks are non-blocking due to pre-existing issues in the codebase
 - **Dashboard Tooling**
   - Prettier configuration (`.prettierrc.json`)
   - Husky + lint-staged for pre-commit hooks
