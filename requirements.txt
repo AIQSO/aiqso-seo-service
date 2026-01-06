@@ -11,7 +11,7 @@ psycopg2-binary==2.9.11
 
 # HTTP client
 httpx==0.26.0
-aiohttp==3.12.14
+aiohttp==3.13.3
 
 # Web scraping and crawling
 beautifulsoup4==4.12.3
