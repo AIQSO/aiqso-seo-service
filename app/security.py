@@ -3,7 +3,6 @@ from __future__ import annotations
 from fastapi import Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
 from app.database import SessionLocal
 from app.models.client import Client
 
@@ -23,18 +22,13 @@ def require_client(
     request: Request,
     authorization: str | None = Header(default=None, alias="Authorization"),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
-) -> Client | None:
+) -> Client:
     """
-    Optional API key auth guard.
+    API key authentication guard.
 
-    - When `REQUIRE_API_KEY=false` (default), this is a no-op and returns `None`.
-    - When enabled, it requires either `X-API-Key` or `Authorization: Bearer ...` and
-      validates it against `Client.api_key`.
+    Requires either `X-API-Key` or `Authorization: Bearer ...` and
+    validates it against `Client.api_key`.
     """
-    settings = get_settings()
-    if not settings.require_api_key:
-        return None
-
     api_key = _extract_api_key(authorization=authorization, x_api_key=x_api_key)
     if not api_key:
         raise HTTPException(status_code=401, detail="API key required")
