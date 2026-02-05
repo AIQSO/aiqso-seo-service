@@ -211,6 +211,7 @@ def list_payments(
     db: Session = Depends(get_db),
 ):
     """List payment history."""
+    # Ownership validation: Filter by authenticated client's ID to prevent cross-client access
     payments = db.query(Payment).filter(
         Payment.client_id == client.id
     ).order_by(Payment.created_at.desc()).limit(limit).all()
