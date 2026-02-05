@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from sqlalchemy.orm import Session
 from typing import Optional
 from pydantic import BaseModel
+from datetime import datetime
 import stripe
 
 from app.database import get_db
@@ -67,9 +68,10 @@ def get_current_client(
     return client
 
 
+# Public endpoints (no authentication required)
 @router.get("/plans")
 def list_plans():
-    """List available subscription plans."""
+    """List available subscription plans. Public endpoint - no auth required."""
     plans = []
     for tier, config in STRIPE_PRICES.items():
         plans.append({
@@ -118,6 +120,7 @@ def get_tier_features(tier: str) -> dict:
     return features.get(tier, features["starter"])
 
 
+# Protected endpoints (authentication required via get_current_client dependency)
 @router.post("/checkout", response_model=CheckoutResponse)
 def create_checkout_session(
     request: CheckoutRequest,
@@ -232,14 +235,14 @@ def list_payments(
     }
 
 
-# Stripe Webhook endpoint
+# Stripe Webhook endpoint (public - authenticated by Stripe signature)
 @router.post("/webhook")
 async def stripe_webhook(
     request: Request,
     stripe_signature: str = Header(None, alias="Stripe-Signature"),
     db: Session = Depends(get_db),
 ):
-    """Handle Stripe webhook events."""
+    """Handle Stripe webhook events. Public endpoint - authenticated by Stripe signature instead of API key."""
     payload = await request.body()
     webhook_secret = settings.stripe_webhook_secret if hasattr(settings, 'stripe_webhook_secret') else None
 
