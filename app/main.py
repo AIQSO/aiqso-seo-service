@@ -97,11 +97,11 @@ app.include_router(
 )
 
 # New routers for customer platform
+# Billing router handles its own auth (some endpoints public, some protected)
 app.include_router(
     billing.router,
     prefix=f"{settings.api_prefix}",
     tags=["Billing"],
-    dependencies=auth_dependencies,
 )
 app.include_router(
     worklog.router,

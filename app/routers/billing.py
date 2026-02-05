@@ -19,6 +19,9 @@ from app.services.stripe_service import StripeService, STRIPE_PRICES
 from app.services.audit_service import AuditService
 from app.security import require_client
 
+# Alias for backwards compatibility with other routers
+get_current_client = require_client
+
 settings = get_settings()
 router = APIRouter(prefix="/billing", tags=["Billing"])
 
