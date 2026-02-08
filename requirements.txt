@@ -49,4 +49,4 @@ tldextract==5.1.1
 
 # Testing
 pytest==7.4.4
-pytest-asyncio==0.23.3
+pytest-asyncio==1.3.0
