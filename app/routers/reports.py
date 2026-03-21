@@ -59,8 +59,10 @@ async def create_report(
     db.commit()
     db.refresh(db_report)
 
-    # TODO: Add background task for report generation
-    # background_tasks.add_task(generate_report_task, db_report.id)
+    # Queue PDF generation in background
+    from app.tasks import generate_pdf_report
+
+    generate_pdf_report.delay(db_report.id)
 
     return ReportResponse(**db_report.__dict__)
 

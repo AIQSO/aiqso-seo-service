@@ -1,12 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
-from typing import Optional
-from datetime import datetime
 import secrets
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, EmailStr
+from sqlalchemy.orm import Session
+
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models.client import Client, ClientTier, TIER_LIMITS
+from app.models.client import TIER_LIMITS, Client, ClientTier
+from app.security import hash_api_key
 
 router = APIRouter()
 
@@ -15,28 +18,28 @@ router = APIRouter()
 class ClientCreate(BaseModel):
     name: str
     email: EmailStr
-    company: Optional[str] = None
-    phone: Optional[str] = None
+    company: str | None = None
+    phone: str | None = None
     tier: ClientTier = ClientTier.STARTER
 
 
 class ClientUpdate(BaseModel):
-    name: Optional[str] = None
-    company: Optional[str] = None
-    phone: Optional[str] = None
-    tier: Optional[ClientTier] = None
-    is_active: Optional[bool] = None
+    name: str | None = None
+    company: str | None = None
+    phone: str | None = None
+    tier: ClientTier | None = None
+    is_active: bool | None = None
 
 
 class ClientResponse(BaseModel):
     id: int
     name: str
     email: str
-    company: Optional[str]
-    phone: Optional[str]
+    company: str | None
+    phone: str | None
     tier: ClientTier
     is_active: bool
-    api_key: Optional[str]
+    api_key: str | None
     created_at: datetime
     websites_count: int = 0
     keywords_count: int = 0
@@ -60,10 +63,7 @@ class TierInfo(BaseModel):
 @router.get("/tiers")
 async def list_tiers():
     """Get all available service tiers with their limits."""
-    return [
-        TierInfo(tier=tier, **limits)
-        for tier, limits in TIER_LIMITS.items()
-    ]
+    return [TierInfo(tier=tier, **limits) for tier, limits in TIER_LIMITS.items()]
 
 
 @router.post("/", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)
@@ -72,39 +72,33 @@ async def create_client(client: ClientCreate, db: Session = Depends(get_db)):
     # Check if email already exists
     existing = db.query(Client).filter(Client.email == client.email).first()
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
-    # Generate API key
+    # Generate API key and store hash
     api_key = f"aiqso_seo_{secrets.token_urlsafe(32)}"
 
     db_client = Client(
         **client.dict(),
-        api_key=api_key,
-        subscription_start=datetime.utcnow(),
+        api_key_hash=hash_api_key(api_key),
+        subscription_start=datetime.now(UTC),
     )
     db.add(db_client)
     db.commit()
     db.refresh(db_client)
 
-    return ClientResponse(
+    response = ClientResponse(
         **db_client.__dict__,
+        api_key=api_key,  # Return plaintext key only on creation (not stored)
         websites_count=0,
         keywords_count=0,
     )
+    return response
 
 
 @router.get("/", response_model=list[ClientResponse])
-async def list_clients(
-    skip: int = 0,
-    limit: int = 100,
-    is_active: Optional[bool] = None,
-    db: Session = Depends(get_db)
-):
+async def list_clients(skip: int = 0, limit: int = 100, is_active: bool | None = None, db: Session = Depends(get_db)):
     """List all clients."""
-    query = db.query(Client)
+    query = db.query(Client).options(selectinload(Client.websites).selectinload("keywords"))
     if is_active is not None:
         query = query.filter(Client.is_active == is_active)
 
@@ -123,12 +117,14 @@ async def list_clients(
 @router.get("/{client_id}", response_model=ClientResponse)
 async def get_client(client_id: int, db: Session = Depends(get_db)):
     """Get a specific client."""
-    client = db.query(Client).filter(Client.id == client_id).first()
+    client = (
+        db.query(Client)
+        .options(selectinload(Client.websites).selectinload("keywords"))
+        .filter(Client.id == client_id)
+        .first()
+    )
     if not client:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Client not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
 
     return ClientResponse(
         **client.__dict__,
@@ -138,18 +134,11 @@ async def get_client(client_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{client_id}", response_model=ClientResponse)
-async def update_client(
-    client_id: int,
-    client_update: ClientUpdate,
-    db: Session = Depends(get_db)
-):
+async def update_client(client_id: int, client_update: ClientUpdate, db: Session = Depends(get_db)):
     """Update a client."""
     client = db.query(Client).filter(Client.id == client_id).first()
     if not client:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Client not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
 
     update_data = client_update.dict(exclude_unset=True)
     for field, value in update_data.items():
@@ -170,13 +159,11 @@ async def regenerate_api_key(client_id: int, db: Session = Depends(get_db)):
     """Regenerate client's API key."""
     client = db.query(Client).filter(Client.id == client_id).first()
     if not client:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Client not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
 
     new_api_key = f"aiqso_seo_{secrets.token_urlsafe(32)}"
-    client.api_key = new_api_key
+    client.api_key_hash = hash_api_key(new_api_key)
+    client.api_key = None  # Clear any legacy plaintext key
     db.commit()
 
     return {"api_key": new_api_key}
@@ -187,10 +174,7 @@ async def delete_client(client_id: int, db: Session = Depends(get_db)):
     """Delete a client (soft delete by deactivating)."""
     client = db.query(Client).filter(Client.id == client_id).first()
     if not client:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Client not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
 
     client.is_active = False
     db.commit()

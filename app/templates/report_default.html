@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ report.title }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a2e; line-height: 1.6; padding: 40px; }
+        .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #0f3460; padding-bottom: 20px; }
+        .header h1 { font-size: 28px; color: #0f3460; }
+        .header .subtitle { color: #666; font-size: 14px; margin-top: 8px; }
+        .brand { font-size: 12px; color: #999; margin-top: 4px; }
+        .summary { background: #f8f9fa; border-radius: 8px; padding: 24px; margin-bottom: 30px; }
+        .summary h2 { font-size: 18px; color: #0f3460; margin-bottom: 12px; }
+        .stats { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 30px; }
+        .stat-card { flex: 1; min-width: 140px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; text-align: center; }
+        .stat-value { font-size: 32px; font-weight: bold; color: #0f3460; }
+        .stat-label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+        .section { margin-bottom: 30px; }
+        .section h2 { font-size: 20px; color: #0f3460; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th { background: #0f3460; color: white; padding: 10px 12px; text-align: left; font-size: 13px; }
+        td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        .score { font-weight: bold; }
+        .score-good { color: #27ae60; }
+        .score-ok { color: #f39c12; }
+        .score-bad { color: #e74c3c; }
+        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 11px; color: #999; }
+        @media print { body { padding: 20px; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        {% if client.brand_name %}
+            <h1>{{ client.brand_name }}</h1>
+        {% else %}
+            <h1>AIQSO SEO Report</h1>
+        {% endif %}
+        <div class="subtitle">{{ report.title }}</div>
+        <div class="brand">{{ report.period_start.strftime('%B %d, %Y') }} — {{ report.period_end.strftime('%B %d, %Y') }}</div>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-value {% if avg_score >= 80 %}score-good{% elif avg_score >= 60 %}score-ok{% else %}score-bad{% endif %}">{{ avg_score }}</div>
+            <div class="stat-label">Avg SEO Score</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ websites|length }}</div>
+            <div class="stat-label">Websites</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ total_audits }}</div>
+            <div class="stat-label">Audits Run</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value {% if total_issues > 10 %}score-bad{% elif total_issues > 0 %}score-ok{% else %}score-good{% endif %}">{{ total_issues }}</div>
+            <div class="stat-label">Issues Found</div>
+        </div>
+    </div>
+
+    <div class="summary">
+        <h2>Executive Summary</h2>
+        <p>During this reporting period, {{ total_audits }} SEO audit{{ 's' if total_audits != 1 }} were performed across {{ websites|length }} website{{ 's' if websites|length != 1 }}. The average SEO score was <strong>{{ avg_score }}/100</strong> with {{ total_issues }} issue{{ 's' if total_issues != 1 }} identified.</p>
+    </div>
+
+    {% if websites %}
+    <div class="section">
+        <h2>Website Performance</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Domain</th>
+                    <th>Latest Score</th>
+                    <th>Keywords Tracked</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for site in websites %}
+                <tr>
+                    <td>{{ site.domain }}</td>
+                    <td>
+                        <span class="score {% if site.last_audit_score and site.last_audit_score >= 80 %}score-good{% elif site.last_audit_score and site.last_audit_score >= 60 %}score-ok{% else %}score-bad{% endif %}">
+                            {{ site.last_audit_score or 'N/A' }}
+                        </span>
+                    </td>
+                    <td>{{ site.keywords|length }}</td>
+                    <td>{{ 'Active' if site.is_active else 'Inactive' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if audits %}
+    <div class="section">
+        <h2>Recent Audits</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>URL</th>
+                    <th>Score</th>
+                    <th>Issues</th>
+                    <th>Warnings</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for audit in audits[:20] %}
+                <tr>
+                    <td>{{ audit.url_audited[:50] }}{% if audit.url_audited|length > 50 %}...{% endif %}</td>
+                    <td>
+                        <span class="score {% if audit.overall_score and audit.overall_score >= 80 %}score-good{% elif audit.overall_score and audit.overall_score >= 60 %}score-ok{% else %}score-bad{% endif %}">
+                            {{ audit.overall_score or 0 }}
+                        </span>
+                    </td>
+                    <td>{{ audit.issues_found or 0 }}</td>
+                    <td>{{ audit.warnings_found or 0 }}</td>
+                    <td>{{ audit.completed_at.strftime('%Y-%m-%d') if audit.completed_at else 'Pending' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if keywords %}
+    <div class="section">
+        <h2>Keyword Rankings</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Keyword</th>
+                    <th>Position</th>
+                    <th>Best</th>
+                    <th>Device</th>
+                    <th>Search Volume</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for kw in keywords[:30] %}
+                <tr>
+                    <td>{{ kw.keyword }}</td>
+                    <td>
+                        <span class="score {% if kw.position and kw.position <= 10 %}score-good{% elif kw.position and kw.position <= 30 %}score-ok{% else %}score-bad{% endif %}">
+                            {{ kw.position or '—' }}
+                        </span>
+                    </td>
+                    <td>{{ kw.best_position or '—' }}</td>
+                    <td>{{ kw.device.value }}</td>
+                    <td>{{ kw.search_volume or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <p>Generated on {{ generated_at.strftime('%B %d, %Y at %H:%M UTC') }}</p>
+        <p>{% if client.brand_name %}{{ client.brand_name }}{% else %}AIQSO SEO Service{% endif %} — Confidential</p>
+    </div>
+</body>
+</html>

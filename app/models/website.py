@@ -1,7 +1,9 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON
+from datetime import UTC, datetime
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
-from app.models.base import Base, TimestampMixin
+
+from app.models.base import Base, TimestampMixin, _utc_now
 
 
 class Website(Base, TimestampMixin):
@@ -104,7 +106,7 @@ class ScoreHistory(Base):
     best_practices_score = Column(Integer, nullable=True)
 
     # Timestamp
-    captured_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    captured_at = Column(DateTime(timezone=True), default=_utc_now, nullable=False, index=True)
 
     # Optional: link to the audit that generated this score
     audit_id = Column(Integer, ForeignKey("audits.id"), nullable=True)

@@ -67,7 +67,8 @@ class Client(Base, TimestampMixin):
 
     # Authentication
     hashed_password = Column(String(255), nullable=True)
-    api_key = Column(String(255), unique=True, nullable=True, index=True)
+    api_key = Column(String(255), unique=True, nullable=True, index=True)  # Plaintext (migration period — will be cleared)
+    api_key_hash = Column(String(64), unique=True, nullable=True, index=True)  # SHA-256 hash for secure lookup
 
     # Subscription
     tier = Column(Enum(ClientTier), default=ClientTier.STARTER, nullable=False)
