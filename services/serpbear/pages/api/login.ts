@@ -22,7 +22,7 @@ const loginUser = async (req: NextApiRequest, res: NextApiResponse<loginResponse
 
    if (req.body.username === userName
       && req.body.password === process.env.PASSWORD && process.env.SECRET) {
-      const token = jwt.sign({ user: userName }, process.env.SECRET);
+      const token = jwt.sign({ user: userName }, process.env.SECRET, { expiresIn: '24h', algorithm: 'HS256' });
       const cookies = new Cookies(req, res);
       const expireDate = new Date();
       const sessDuration = process.env.SESSION_DURATION;

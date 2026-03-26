@@ -30,7 +30,7 @@ const verifyUser = (req: NextApiRequest, res: NextApiResponse): string => {
 
    let authorized: string = '';
    if (token && process.env.SECRET) {
-      jwt.verify(token, process.env.SECRET, (err) => {
+      jwt.verify(token, process.env.SECRET, { algorithms: ['HS256'] }, (err) => {
          // console.log(err);
          authorized = err ? 'Not authorized' : 'authorized';
       });

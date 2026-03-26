@@ -1,0 +1,61 @@
+name: Dependency Security Audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 9 * * 1'
+
+jobs:
+  audit-dashboard:
+    name: Audit dashboard/
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+      - name: Security audit (fail on high+)
+        run: npm audit --audit-level=high
+
+  audit-serpbear:
+    name: Audit services/serpbear/
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/serpbear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/serpbear/package-lock.json
+      - run: npm ci
+      - name: Security audit (fail on critical)
+        run: npm audit --audit-level=critical
+
+  audit-mcp-server:
+    name: Audit services/serpbear/mcp_server/
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/serpbear/mcp_server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/serpbear/mcp_server/package-lock.json
+      - run: npm ci
+      - name: Security audit (fail on moderate+)
+        run: npm audit --audit-level=moderate
