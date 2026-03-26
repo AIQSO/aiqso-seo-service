@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import * as ReactQuery from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import * as ReactQuery from '@tanstack/react-query';
 import { dummyDomain } from '../../__mocks__/data';
 import Domains from '../../pages/domains';
 

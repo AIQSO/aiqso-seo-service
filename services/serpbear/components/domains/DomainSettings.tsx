@@ -29,7 +29,7 @@ const DomainSettings = ({ domain, closeModal }: DomainSettingsProps) => {
       },
    }));
 
-   const { mutate: updateMutate, error: domainUpdateError, isLoading: isUpdating } = useUpdateDomain(() => closeModal(false));
+   const { mutate: updateMutate, error: domainUpdateError, isPending: isUpdating } = useUpdateDomain(() => closeModal(false));
    const { mutate: deleteMutate } = useDeleteDomain(() => { closeModal(false); router.push('/domains'); });
 
    // Get the Full Domain Data along with the Search Console API Data.

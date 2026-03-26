@@ -11,7 +11,7 @@ type AddDomainProps = {
 const AddDomain = ({ closeModal, domains = [] }: AddDomainProps) => {
    const [newDomain, setNewDomain] = useState<string>('');
    const [newDomainError, setNewDomainError] = useState('');
-   const { mutate: addMutate, isLoading: isAdding } = useAddDomain(() => closeModal());
+   const { mutate: addMutate, isPending: isAdding } = useAddDomain(() => closeModal());
 
    const addDomain = () => {
       setNewDomainError('');

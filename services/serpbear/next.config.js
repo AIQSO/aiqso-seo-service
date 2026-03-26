@@ -3,11 +3,10 @@ const { version } = require('./package.json');
 
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: false,
   output: 'standalone',
-  publicRuntimeConfig: {
-   version,
- },
+  env: {
+    APP_VERSION: version,
+  },
 };
 
 module.exports = nextConfig;

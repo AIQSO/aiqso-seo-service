@@ -1,5 +1,5 @@
 import { NextRouter } from 'next/router';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 
 export async function fetchSCKeywords(router: NextRouter) {
    // if (!router.query.slug) { throw new Error('Invalid Domain Name'); }
@@ -16,7 +16,7 @@ export async function fetchSCKeywords(router: NextRouter) {
 
 export function useFetchSCKeywords(router: NextRouter, domainLoaded: boolean = false) {
    // console.log('ROUTER: ', router);
-   return useQuery('sckeywords', () => router.query.slug && fetchSCKeywords(router), { enabled: domainLoaded });
+   return useQuery({ queryKey: ['sckeywords'], queryFn: () => router.query.slug && fetchSCKeywords(router), enabled: domainLoaded });
 }
 
 export async function fetchSCInsight(router: NextRouter) {
@@ -34,5 +34,5 @@ export async function fetchSCInsight(router: NextRouter) {
 
 export function useFetchSCInsight(router: NextRouter, domainLoaded: boolean = false) {
    // console.log('ROUTER: ', router);
-   return useQuery('scinsight', () => router.query.slug && fetchSCInsight(router), { enabled: domainLoaded });
+   return useQuery({ queryKey: ['scinsight'], queryFn: () => router.query.slug && fetchSCInsight(router), enabled: domainLoaded });
 }

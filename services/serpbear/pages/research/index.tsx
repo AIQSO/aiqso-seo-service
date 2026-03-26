@@ -26,7 +26,7 @@ const Research: NextPage = () => {
    const adwordsConnected = !!(appSettings && appSettings?.settings?.adwords_refresh_token
       && appSettings?.settings?.adwords_developer_token, appSettings?.settings?.adwords_account_id);
    const { data: keywordIdeasData, isLoading: isLoadingIdeas, isError: errorLoadingIdeas } = useFetchKeywordIdeas(router, adwordsConnected);
-   const { mutate: updateKeywordIdeas, isLoading: isUpdatingIdeas } = useMutateKeywordIdeas(router);
+   const { mutate: updateKeywordIdeas, isPending: isUpdatingIdeas } = useMutateKeywordIdeas(router);
 
    const keywordIdeas:IdeaKeyword[] = keywordIdeasData?.data?.keywords || [];
    const favorites:IdeaKeyword[] = keywordIdeasData?.data?.favorites || [];

@@ -29,7 +29,7 @@ const AddKeywords = ({ closeModal, domain, keywords, scraperName = '', allowsCit
    const [error, setError] = useState<string>('');
    const [showTagSuggestions, setShowTagSuggestions] = useState(false);
    const [newKeywordsData, setNewKeywordsData] = useState<KeywordsInput>({ keywords: '', device: 'desktop', country: defCountry, domain, tags: '' });
-   const { mutate: addMutate, isLoading: isAdding } = useAddKeywords(() => closeModal(false));
+   const { mutate: addMutate, isPending: isAdding } = useAddKeywords(() => closeModal(false));
 
    const existingTags: string[] = useMemo(() => {
       const allTags = keywords.reduce((acc: string[], keyword) => [...acc, ...keyword.tags], []).filter((t) => t && t.trim() !== '');
