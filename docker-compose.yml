@@ -74,6 +74,15 @@ services:
       - REQUIRE_API_KEY=${REQUIRE_API_KEY:-false}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - DB_AUTO_CREATE=${DB_AUTO_CREATE:-false}
+      # Notifications (all optional)
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
+      - ALERT_EMAIL=${ALERT_EMAIL:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-seo-alerts@aiqso.io}
     ports:
       - "8002:8002"
     depends_on:
@@ -107,6 +116,16 @@ services:
       - SERPBEAR_URL=${SERPBEAR_URL:-http://serpbear:3000}
       - SERPBEAR_API_KEY=${SERPBEAR_API_KEY:-}
       - SCRAPING_API_KEY=${SCRAPING_API_KEY:-}
+      # Notifications (all optional)
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
+      - ALERT_EMAIL=${ALERT_EMAIL:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-seo-alerts@aiqso.io}
+      - APP_URL=${APP_URL:-https://seo.aiqso.io}
     depends_on:
       postgres:
         condition: service_healthy

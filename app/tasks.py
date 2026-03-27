@@ -9,6 +9,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from app.celery_app import celery_app
+from app.config import get_settings
 from app.database import SessionLocal
 
 logger = logging.getLogger(__name__)
@@ -247,7 +248,9 @@ def monitor_score_drops():
     Runs every 6 hours.
     """
     from app.models.website import ScoreHistory, Website
+    from app.services.notification_service import NotificationService
 
+    settings = get_settings()
     db = SessionLocal()
     try:
         # Look at score changes in the last 7 days
@@ -256,17 +259,19 @@ def monitor_score_drops():
         websites = db.query(Website).filter(Website.is_active.is_(True), Website.last_audit_score != None).all()
 
         alerts = []
+        notifier = NotificationService()
+
         for website in websites:
             # Get oldest score from last week
-            old_score = (
+            old_score_entry = (
                 db.query(ScoreHistory)
                 .filter(ScoreHistory.website_id == website.id, ScoreHistory.captured_at >= one_week_ago)
                 .order_by(ScoreHistory.captured_at.asc())
                 .first()
             )
 
-            if old_score and website.last_audit_score:
-                drop = old_score.score - website.last_audit_score
+            if old_score_entry and website.last_audit_score:
+                drop = old_score_entry.score - website.last_audit_score
 
                 # Alert if score dropped by 10+ points
                 if drop >= 10:
@@ -274,19 +279,134 @@ def monitor_score_drops():
                         {
                             "website_id": website.id,
                             "domain": website.domain,
-                            "old_score": old_score.score,
+                            "old_score": old_score_entry.score,
                             "new_score": website.last_audit_score,
                             "drop": drop,
                         }
                     )
 
-                    # TODO: Send notification (email, Slack, etc.)
                     logger.warning(
-                        f"Score drop detected: {website.domain} "
-                        f"dropped {drop} points ({old_score.score} -> {website.last_audit_score})"
+                        "Score drop detected: %s dropped %.0f points (%.0f -> %.0f)",
+                        website.domain,
+                        drop,
+                        old_score_entry.score,
+                        website.last_audit_score,
+                    )
+
+                    audit_url = f"{settings.app_url}/audits?domain={website.domain}"
+                    asyncio.run(
+                        notifier.send_score_drop_alert(
+                            website_domain=website.domain,
+                            old_score=old_score_entry.score,
+                            new_score=website.last_audit_score,
+                            drop_amount=drop,
+                            audit_url=audit_url,
+                        )
                     )
 
         return {"alerts": len(alerts), "details": alerts}
+
+    finally:
+        db.close()
+
+
+@celery_app.task
+def send_daily_summary():
+    """
+    Send a daily summary of SEO activity across all monitored websites.
+    Runs at 7 AM UTC, after the 6 AM scheduled audit completes.
+    """
+    from app.models.website import ScoreHistory, Website
+    from app.models.audit import Audit, AuditStatus
+    from app.services.notification_service import NotificationService
+
+    db = SessionLocal()
+    try:
+        today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        yesterday_start = today_start - timedelta(days=1)
+
+        # Audits completed in the last 24 hours
+        recent_audits = (
+            db.query(Audit)
+            .filter(
+                Audit.status == AuditStatus.COMPLETED,
+                Audit.completed_at >= yesterday_start,
+                Audit.completed_at < today_start,
+            )
+            .all()
+        )
+
+        sites_audited = len({a.website_id for a in recent_audits})
+        new_issues = sum(a.issues_found or 0 for a in recent_audits)
+
+        scores = [a.overall_score for a in recent_audits if a.overall_score is not None]
+        average_score = sum(scores) / len(scores) if scores else 0.0
+
+        # Score changes: compare yesterday's snapshot vs the one from 48 hours ago
+        two_days_ago = yesterday_start - timedelta(days=1)
+        websites = db.query(Website).filter(Website.is_active.is_(True)).all()
+
+        score_changes: list[dict] = []
+        for website in websites:
+            yesterday_entry = (
+                db.query(ScoreHistory)
+                .filter(
+                    ScoreHistory.website_id == website.id,
+                    ScoreHistory.captured_at >= yesterday_start,
+                    ScoreHistory.captured_at < today_start,
+                )
+                .order_by(ScoreHistory.captured_at.desc())
+                .first()
+            )
+            prev_entry = (
+                db.query(ScoreHistory)
+                .filter(
+                    ScoreHistory.website_id == website.id,
+                    ScoreHistory.captured_at >= two_days_ago,
+                    ScoreHistory.captured_at < yesterday_start,
+                )
+                .order_by(ScoreHistory.captured_at.desc())
+                .first()
+            )
+
+            if yesterday_entry and prev_entry:
+                delta = yesterday_entry.score - prev_entry.score
+                if abs(delta) >= 1:
+                    score_changes.append(
+                        {
+                            "domain": website.domain,
+                            "old_score": prev_entry.score,
+                            "new_score": yesterday_entry.score,
+                            "delta": delta,
+                        }
+                    )
+
+        # Sort by largest absolute change first
+        score_changes.sort(key=lambda x: abs(x["delta"]), reverse=True)
+
+        notifier = NotificationService()
+        asyncio.run(
+            notifier.send_daily_summary(
+                sites_audited=sites_audited,
+                average_score=average_score,
+                score_changes=score_changes,
+                new_issues=new_issues,
+            )
+        )
+
+        logger.info(
+            "Daily summary sent: %d sites audited, avg score %.1f, %d score changes, %d new issues",
+            sites_audited,
+            average_score,
+            len(score_changes),
+            new_issues,
+        )
+        return {
+            "sites_audited": sites_audited,
+            "average_score": round(average_score, 1),
+            "score_changes": len(score_changes),
+            "new_issues": new_issues,
+        }
 
     finally:
         db.close()

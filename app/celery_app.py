@@ -61,4 +61,10 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(hour="*/6"),  # Every 6 hours
         "args": (),
     },
+    # Daily summary notification at 7 AM UTC (after 6 AM audit completes)
+    "daily-summary-notification": {
+        "task": "app.tasks.send_daily_summary",
+        "schedule": crontab(hour=7, minute=0),
+        "args": (),
+    },
 }

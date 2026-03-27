@@ -283,6 +283,26 @@ class SEOAuditor:
             # Fetch the page
             response = await self.client.get(url)
             html = response.text
+
+            # JS-rendered sites (e.g. Next.js, React) may return near-empty HTML
+            # from a plain HTTP fetch.  Fall back to Playwright when the initial
+            # response has very little readable content.
+            word_count = len(html.split())
+            if word_count < 50:
+                logger.info(
+                    "Initial fetch returned sparse content (%d words) for %s; "
+                    "attempting JS rendering fallback.",
+                    word_count,
+                    url,
+                )
+                try:
+                    html = await self._fetch_with_js_rendering(url)
+                except Exception as pw_exc:
+                    logger.warning(
+                        "Playwright JS rendering fallback failed for %s: %s", url, pw_exc
+                    )
+                    # Keep the original sparse HTML and continue
+
             soup = BeautifulSoup(html, "lxml")
 
             # Run all checks
@@ -334,6 +354,18 @@ class SEOAuditor:
                     )
                 ],
             )
+
+    async def _fetch_with_js_rendering(self, url: str) -> str:
+        """Fallback: render page with headless browser when content is JS-rendered."""
+        from playwright.async_api import async_playwright
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            await page.goto(url, wait_until="networkidle", timeout=30000)
+            html = await page.content()
+            await browser.close()
+            return html
 
     async def _run_configuration_checks(
         self,

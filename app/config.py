@@ -65,6 +65,16 @@ class Settings(BaseSettings):
     # App URL (for callbacks)
     app_url: str = "https://seo.aiqso.io"
 
+    # Notifications
+    slack_webhook_url: str = ""
+    n8n_webhook_url: str = ""
+    alert_email: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_pass: str = ""
+    smtp_from: str = "seo-alerts@aiqso.io"
+
     # Security
     secret_key: str = "change-this-in-production"
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
