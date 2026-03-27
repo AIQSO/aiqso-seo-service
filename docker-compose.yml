@@ -132,7 +132,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: aiqso-seo-beat
     restart: unless-stopped
-    command: celery -A app.celery_app beat --loglevel=info
+    command: celery -A app.celery_app beat --loglevel=info --pidfile=/tmp/celerybeat.pid
     environment:
       - DATABASE_URL=postgresql://seo_user:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/aiqso_seo
       - REDIS_URL=redis://redis:6379/0
