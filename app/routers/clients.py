@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models.client import TIER_LIMITS, Client, ClientTier
+from app.models.website import Website
 from app.security import hash_api_key
 
 router = APIRouter()
@@ -98,7 +99,7 @@ async def create_client(client: ClientCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=list[ClientResponse])
 async def list_clients(skip: int = 0, limit: int = 100, is_active: bool | None = None, db: Session = Depends(get_db)):
     """List all clients."""
-    query = db.query(Client).options(selectinload(Client.websites).selectinload("keywords"))
+    query = db.query(Client).options(selectinload(Client.websites).selectinload(Website.keywords))
     if is_active is not None:
         query = query.filter(Client.is_active == is_active)
 
@@ -119,7 +120,7 @@ async def get_client(client_id: int, db: Session = Depends(get_db)):
     """Get a specific client."""
     client = (
         db.query(Client)
-        .options(selectinload(Client.websites).selectinload("keywords"))
+        .options(selectinload(Client.websites).selectinload(Website.keywords))
         .filter(Client.id == client_id)
         .first()
     )
