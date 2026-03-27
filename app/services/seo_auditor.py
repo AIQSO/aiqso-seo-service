@@ -169,7 +169,7 @@ class SEOAuditor:
             import httpx
 
             payload = {
-                "model": "llama3.2",
+                "model": "llama3.3:70b",
                 "prompt": prompt,
                 "stream": False,
             }
