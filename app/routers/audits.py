@@ -133,7 +133,8 @@ async def create_audit(
         audit_request.include_ai_insights,
     )
 
-    return AuditResponse(**audit.__dict__, checks=[])
+    create_dict = {k: v for k, v in audit.__dict__.items() if k != "checks" and not k.startswith("_")}
+    return AuditResponse(**create_dict, checks=[])
 
 
 @router.get("/", response_model=list[AuditSummary])
@@ -178,8 +179,9 @@ async def get_audit(audit_id: int, client: Client = Depends(get_current_client),
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     checks = [AuditCheckResponse(**c.__dict__) for c in audit.checks]
+    audit_dict = {k: v for k, v in audit.__dict__.items() if k != "checks" and not k.startswith("_")}
 
-    return AuditResponse(**audit.__dict__, checks=checks)
+    return AuditResponse(**audit_dict, checks=checks)
 
 
 @router.get("/{audit_id}/checks", response_model=list[AuditCheckResponse])
@@ -226,7 +228,8 @@ async def retry_audit(audit_id: int, background_tasks: BackgroundTasks, db: Sess
     # Start audit in background
     background_tasks.add_task(run_audit_task, audit.id, True, True)
 
-    return AuditResponse(**audit.__dict__, checks=[])
+    create_dict = {k: v for k, v in audit.__dict__.items() if k != "checks" and not k.startswith("_")}
+    return AuditResponse(**create_dict, checks=[])
 
 
 @router.delete("/{audit_id}", status_code=status.HTTP_204_NO_CONTENT)
