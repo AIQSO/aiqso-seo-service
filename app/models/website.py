@@ -13,7 +13,6 @@ class Website(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, index=True)
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=True, index=True)
-    customer_id = Column(Integer, ForeignKey("subscriptions.customer_id"), nullable=True, index=True)
 
     # Domain info
     domain = Column(String(255), nullable=False, index=True)
