@@ -87,7 +87,8 @@ class SEOAuditor:
             # Mark complete
             audit.status = AuditStatus.COMPLETED
             audit.completed_at = datetime.now(UTC)
-            audit.duration_seconds = (audit.completed_at - audit.started_at).total_seconds()
+            started = audit.started_at.replace(tzinfo=UTC) if audit.started_at.tzinfo is None else audit.started_at
+            audit.duration_seconds = (audit.completed_at - started).total_seconds()
 
             # Update website cached scores
             audit.website.last_audit_at = audit.completed_at
