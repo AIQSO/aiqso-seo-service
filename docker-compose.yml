@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: seo_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-seo_secure_pass}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
       POSTGRES_DB: aiqso_seo
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -47,10 +47,10 @@ services:
     container_name: aiqso-seo-api
     restart: unless-stopped
     environment:
-      - DATABASE_URL=postgresql://seo_user:${DB_PASSWORD:-seo_secure_pass}@postgres:5432/aiqso_seo
+      - DATABASE_URL=postgresql://seo_user:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/aiqso_seo
       - REDIS_URL=redis://redis:6379/0
       - DEBUG=${DEBUG:-false}
-      - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set}
       # AI Services
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - AI_SERVER_URL=${AI_SERVER_URL:-http://192.168.0.234:11434}
@@ -96,7 +96,7 @@ services:
     restart: unless-stopped
     command: celery -A app.celery_app worker --loglevel=info --concurrency=2
     environment:
-      - DATABASE_URL=postgresql://seo_user:${DB_PASSWORD:-seo_secure_pass}@postgres:5432/aiqso_seo
+      - DATABASE_URL=postgresql://seo_user:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/aiqso_seo
       - REDIS_URL=redis://redis:6379/0
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - AI_SERVER_URL=${AI_SERVER_URL:-http://192.168.0.234:11434}
@@ -124,7 +124,7 @@ services:
     restart: unless-stopped
     command: celery -A app.celery_app beat --loglevel=info
     environment:
-      - DATABASE_URL=postgresql://seo_user:${DB_PASSWORD:-seo_secure_pass}@postgres:5432/aiqso_seo
+      - DATABASE_URL=postgresql://seo_user:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/aiqso_seo
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -165,9 +165,9 @@ services:
       - "3001:3000"
     environment:
       - USER=${SERPBEAR_USER:-admin}
-      - PASSWORD=${SERPBEAR_PASSWORD:-admin123}
-      - SECRET=${SERPBEAR_SECRET:-change-this-secret-key}
-      - APIKEY=${SERPBEAR_API_KEY:-serpbear-api-key}
+      - PASSWORD=${SERPBEAR_PASSWORD:?SERPBEAR_PASSWORD must be set}
+      - SECRET=${SERPBEAR_SECRET:?SERPBEAR_SECRET must be set}
+      - APIKEY=${SERPBEAR_API_KEY:?SERPBEAR_API_KEY must be set}
       - NEXT_PUBLIC_APP_URL=${SERPBEAR_PUBLIC_URL:-http://localhost:3001}
     volumes:
       - serpbear_data:/app/data

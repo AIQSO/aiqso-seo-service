@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -25,6 +25,10 @@ venv/
 ENV/
 env/
 .venv/
+
+# Node / Next.js
+node_modules/
+.next/
 
 # IDE
 .idea/

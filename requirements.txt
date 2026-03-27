@@ -55,3 +55,7 @@ tldextract>=5.1.1
 # Testing
 pytest>=8.0.0
 pytest-asyncio>=0.23.3
+
+# Security overrides — transitive dependency pins to address known CVEs
+# CVE-2026-4539: ReDoS vulnerability in Pygments (transitive via weasyprint/jinja2)
+pygments>=2.19.2
