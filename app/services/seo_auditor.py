@@ -5,6 +5,7 @@ Database-backed auditor that delegates check execution to src/core/auditor
 and persists results to the database. Single source of truth for audit logic.
 """
 
+import logging
 from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
@@ -15,6 +16,7 @@ from app.security import validate_audit_url
 from src.core.auditor import AuditResult, CheckResult, SEOAuditor as CoreAuditor
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 # Map string categories from core auditor to DB enum
 _CATEGORY_MAP = {
@@ -61,9 +63,14 @@ class SEOAuditor:
             # Persist check results to database
             self._persist_checks(audit, result)
 
-            # Generate AI insights if enabled and core didn't already
+            # Generate AI insights if enabled — failures are non-fatal and
+            # must not propagate to the outer exception handler.
             if include_ai and not result.ai_summary:
-                await self._generate_ai_insights(audit)
+                try:
+                    await self._generate_ai_insights(audit)
+                except Exception as ai_exc:
+                    logger.warning("AI insight generation failed (non-fatal): %s", ai_exc)
+                    audit.ai_summary = "AI insights unavailable"
             elif result.ai_summary:
                 audit.ai_summary = result.ai_summary
 
@@ -115,38 +122,64 @@ class SEOAuditor:
             audit.checks.append(db_check)
 
     async def _generate_ai_insights(self, audit: Audit):
-        """Generate AI-powered insights using Claude."""
-        if not settings.anthropic_api_key:
-            return
+        """Generate AI-powered insights using Claude, with Ollama as fallback.
 
+        Tries Anthropic first. If the key is absent, expired, or the call
+        fails for any reason, falls back to the Ollama instance configured
+        via AI_SERVER_URL.  If both fail, sets ai_summary to a neutral
+        unavailable message so the audit status is unaffected.
+        """
+        failed_checks = [c for c in audit.checks if not c.passed]
+        check_summary = "\n".join(
+            [f"- {c.title}: {c.current_value} (expected: {c.expected_value})" for c in failed_checks[:10]]
+        )
+        prompt = (
+            f"Analyze these SEO audit results for {audit.url_audited} and provide:\n"
+            "1. A brief summary (2-3 sentences)\n"
+            "2. Top 3 priority fixes\n"
+            "3. Quick wins that can be implemented immediately\n\n"
+            f"Failed checks:\n{check_summary}\n\n"
+            f"Overall score: {audit.overall_score}/100\n"
+        )
+
+        # --- Attempt 1: Anthropic ---
+        if settings.anthropic_api_key:
+            try:
+                import anthropic
+
+                client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+                message = client.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=500,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                audit.ai_summary = message.content[0].text
+                return
+            except Exception as anthropic_exc:
+                logger.warning(
+                    "Anthropic AI insights failed, attempting Ollama fallback: %s", anthropic_exc
+                )
+        else:
+            logger.debug("ANTHROPIC_API_KEY not configured; skipping Anthropic, attempting Ollama fallback.")
+
+        # --- Attempt 2: Ollama fallback ---
+        ollama_base = settings.ai_server_url.rstrip("/")
         try:
-            import anthropic
+            import httpx
 
-            client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+            payload = {
+                "model": "llama3.2",
+                "prompt": prompt,
+                "stream": False,
+            }
+            async with httpx.AsyncClient(timeout=60.0) as http:
+                response = await http.post(f"{ollama_base}/api/generate", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                audit.ai_summary = data.get("response", "").strip() or "AI insights unavailable"
+                return
+        except Exception as ollama_exc:
+            logger.warning("Ollama AI fallback also failed: %s", ollama_exc)
 
-            failed_checks = [c for c in audit.checks if not c.passed]
-            check_summary = "\n".join(
-                [f"- {c.title}: {c.current_value} (expected: {c.expected_value})" for c in failed_checks[:10]]
-            )
-
-            prompt = f"""Analyze these SEO audit results for {audit.url_audited} and provide:
-1. A brief summary (2-3 sentences)
-2. Top 3 priority fixes
-3. Quick wins that can be implemented immediately
-
-Failed checks:
-{check_summary}
-
-Overall score: {audit.overall_score}/100
-"""
-
-            message = client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=500,
-                messages=[{"role": "user", "content": prompt}],
-            )
-
-            audit.ai_summary = message.content[0].text
-
-        except Exception as e:
-            audit.ai_summary = f"AI insights unavailable: {str(e)}"
+        # Both providers failed — set a neutral message and let the audit complete.
+        audit.ai_summary = "AI insights unavailable"

@@ -6,6 +6,8 @@ Used by CLI and MCP server.
 """
 
 import ipaddress
+import logging
+import os
 import socket
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -14,6 +16,8 @@ from urllib.parse import urlparse
 
 import httpx
 from bs4 import BeautifulSoup
+
+logger = logging.getLogger(__name__)
 
 from .tiers import Tier
 
@@ -737,41 +741,65 @@ class SEOAuditor:
         result.warnings_found = sum(1 for c in checks if not c.passed and c.severity == "warning")
 
     async def _generate_ai_insights(self, result: AuditResult) -> str | None:
-        """Generate AI-powered insights using Claude."""
-        try:
-            import os
+        """Generate AI-powered insights using Claude, with Ollama as fallback.
 
-            api_key = os.environ.get("ANTHROPIC_API_KEY")
-            if not api_key:
-                return None
+        Tries Anthropic first (ANTHROPIC_API_KEY env var).  If absent or the
+        call fails, falls back to Ollama via AI_SERVER_URL env var.  Returns
+        None (not an error string) so callers know no summary is available
+        without treating it as a failure.
+        """
+        failed_checks = [c for c in result.checks if not c.passed]
+        check_summary = "\n".join(
+            [f"- {c.title}: {c.current_value} (expected: {c.expected_value})" for c in failed_checks[:10]]
+        )
+        prompt = (
+            f"Analyze these SEO audit results for {result.url} and provide:\n"
+            "1. A brief summary (2-3 sentences)\n"
+            "2. Top 3 priority fixes\n"
+            "3. Quick wins that can be implemented immediately\n\n"
+            f"Failed checks:\n{check_summary}\n\n"
+            f"Overall score: {result.overall_score}/100\n"
+        )
 
-            import anthropic
+        # --- Attempt 1: Anthropic ---
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if api_key:
+            try:
+                import anthropic
 
-            client = anthropic.Anthropic(api_key=api_key)
+                client = anthropic.Anthropic(api_key=api_key)
+                message = client.messages.create(
+                    model="claude-3-haiku-20240307",
+                    max_tokens=500,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                return message.content[0].text
+            except Exception as anthropic_exc:
+                logger.warning(
+                    "Anthropic AI insights failed, attempting Ollama fallback: %s", anthropic_exc
+                )
+        else:
+            logger.debug("ANTHROPIC_API_KEY not set; skipping Anthropic, attempting Ollama fallback.")
 
-            failed_checks = [c for c in result.checks if not c.passed]
-            check_summary = "\n".join(
-                [f"- {c.title}: {c.current_value} (expected: {c.expected_value})" for c in failed_checks[:10]]
-            )
+        # --- Attempt 2: Ollama fallback ---
+        ollama_base = os.environ.get("AI_SERVER_URL", "").rstrip("/")
+        if ollama_base:
+            try:
+                payload = {
+                    "model": "llama3.2",
+                    "prompt": prompt,
+                    "stream": False,
+                }
+                async with httpx.AsyncClient(timeout=60.0) as http:
+                    response = await http.post(f"{ollama_base}/api/generate", json=payload)
+                    response.raise_for_status()
+                    data = response.json()
+                    text = data.get("response", "").strip()
+                    return text or None
+            except Exception as ollama_exc:
+                logger.warning("Ollama AI fallback also failed: %s", ollama_exc)
+        else:
+            logger.debug("AI_SERVER_URL not set; Ollama fallback unavailable.")
 
-            prompt = f"""Analyze these SEO audit results for {result.url} and provide:
-1. A brief summary (2-3 sentences)
-2. Top 3 priority fixes
-3. Quick wins that can be implemented immediately
-
-Failed checks:
-{check_summary}
-
-Overall score: {result.overall_score}/100
-"""
-
-            message = client.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=500,
-                messages=[{"role": "user", "content": prompt}],
-            )
-
-            return message.content[0].text
-
-        except Exception as e:
-            return f"AI insights unavailable: {str(e)}"
+        # Both providers failed — return None so the audit result is unaffected.
+        return None
