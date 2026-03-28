@@ -286,8 +286,12 @@ class SEOAuditor:
 
             # JS-rendered sites (e.g. Next.js, React) may return near-empty HTML
             # from a plain HTTP fetch.  Fall back to Playwright when the initial
-            # response has very little readable content.
-            word_count = len(html.split())
+            # response has very little visible text content (ignoring scripts/styles).
+            import re
+            visible_text = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL)
+            visible_text = re.sub(r'<style[^>]*>.*?</style>', '', visible_text, flags=re.DOTALL)
+            visible_text = re.sub(r'<[^>]+>', ' ', visible_text)
+            word_count = len([w for w in visible_text.split() if len(w) > 1])
             if word_count < 50:
                 logger.info(
                     "Initial fetch returned sparse content (%d words) for %s; "
